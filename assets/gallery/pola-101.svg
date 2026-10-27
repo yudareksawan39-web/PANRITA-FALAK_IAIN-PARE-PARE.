@@ -1,4 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120" role="img" aria-label="Sketsa pola geometris edukatif">
-<rect width="200" height="120" fill="#092b49"/><rect x="5" y="5" width="190" height="110" rx="4" fill="none" stroke="#c28a3d" stroke-width="2"/>
-<defs><pattern id="p" width="200" height="100" patternUnits="userSpaceOnUse"><path d="M0 40 Q25 0 50 40 T100 40 T150 40 T200 40" fill="none" stroke="#c28a3d" stroke-width="5"/><path d="M0 60 Q25 100 50 60 T100 60 T150 60 T200 60" fill="none" stroke="#f4e8c9" stroke-width="3"/></pattern></defs><rect x="8" y="8" width="184" height="104" fill="url(#p)"/>
-<text x="100" y="108" font-family="serif" font-size="7" text-anchor="middle" fill="#f4e8c9" opacity=".8">ANYAMAN SEMESTA · SKETSA EDUKATIF</text></svg>
