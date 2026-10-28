@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">\n  <link rel="stylesheet" href="hilal.css">
+  <link rel="stylesheet" href="style.css">  <link rel="stylesheet" href="hilal.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style id="falak-additions">
 .app-mark img{width:76px;height:76px;object-fit:contain;display:block}
@@ -302,10 +302,13 @@
 
           <!-- Sun -->
           <section class="page" id="page-sun">
-            <div class="page-heading"><div><span class="eyebrow">ASTRONOMI</span><h2>Posisi Matahari</h2><p>Azimut, ketinggian, dan waktu penting matahari.</p></div></div>
+            <div class="page-heading"><div><span class="eyebrow">ASTRONOMI • SIMULASI LANGIT</span><h2>Posisi Matahari & Bulan</h2><p>Simulasikan keadaan langit berdasarkan tanggal, jam, dan lokasi pengamatan.</p></div></div>
             <div class="sun-location card"><span>⌖</span><div><b id="sunLocation">Kota Parepare, Sulawesi Selatan</b><small id="sunDate">--</small></div></div>
-            <div class="sun-visual card"><div class="sun-arc scene-day" id="sunScene"><div class="scene-stars" aria-hidden="true"></div><div class="scene-cloud scene-cloud-a" aria-hidden="true"></div><div class="scene-cloud scene-cloud-b" aria-hidden="true"></div><div class="sun-dot" id="sunDot" aria-label="Posisi Matahari">☀</div><div class="horizon"></div><div class="sun-building" aria-hidden="true">⌂</div><div class="sun-scene-caption"><b id="sunSceneLabel">Langit siang</b><span id="sunSceneDetail">Simulasi berdasarkan waktu dan lokasi</span></div></div></div>
-            <div class="metric-grid"><div class="metric card"><small>Azimut Matahari</small><b id="sunAzimuth">--°</b><span id="sunDirection">--</span></div><div class="metric card"><small>Ketinggian Matahari</small><b id="sunAltitude">--°</b></div><div class="metric card"><small>Waktu Zawal</small><b id="sunZawal">--:--</b></div><div class="metric card"><small>Waktu Istiwā'</small><b id="sunTransit">--:--</b></div></div>
+            <div class="card sky-controls"><div><label for="sunSimulationDate">Tanggal dan jam simulasi</label><input id="sunSimulationDate" type="datetime-local"></div><div><label for="sunSimulationTimezone">Zona waktu</label><select id="sunSimulationTimezone"><option value="7">WIB (UTC+7)</option><option value="8" selected>WITA (UTC+8)</option><option value="9">WIT (UTC+9)</option><option value="0">UTC</option></select></div><div class="button-row"><button class="primary-btn" data-action="simulate-sky">Simulasikan langit</button><button class="secondary-btn" data-action="sky-now">Gunakan waktu sekarang</button></div></div>
+            <div class="sun-visual card"><div class="sun-arc scene-day" id="sunScene"><div class="scene-stars" aria-hidden="true"></div><div class="scene-cloud scene-cloud-a" aria-hidden="true"></div><div class="scene-cloud scene-cloud-b" aria-hidden="true"></div><div class="sun-dot" id="sunDot" aria-label="Posisi Matahari">☀</div><div class="moon-dot" id="moonDot" aria-label="Posisi Bulan">☾</div><div class="horizon"></div><div class="sun-building" aria-hidden="true">⌂</div><div class="sun-scene-caption"><b id="sunSceneLabel">Langit siang</b><span id="sunSceneDetail">Simulasi berdasarkan waktu dan lokasi</span></div></div></div>
+            <div class="metric-grid"><div class="metric card"><small>Azimut Matahari</small><b id="sunAzimuth">--°</b><span id="sunDirection">--</span></div><div class="metric card"><small>Ketinggian Matahari</small><b id="sunAltitude">--°</b><span id="sunSunState">--</span></div><div class="metric card"><small>Deklinasi Matahari</small><b id="sunDeclination">--°</b><span>Sudut dari ekuator langit</span></div><div class="metric card"><small>Fase Bulan</small><b id="moonPhase">--</b><span id="moonIllumination">Iluminasi --%</span></div></div>
+            <div class="metric-grid moon-metrics"><div class="metric card"><small>Azimut Bulan</small><b id="moonAzimuth">--°</b><span id="moonDirection">--</span></div><div class="metric card"><small>Ketinggian Bulan</small><b id="moonAltitude">--°</b><span id="moonVisibility">--</span></div><div class="metric card"><small>Sudut elongasi</small><b id="moonElongation">--°</b><span>Jarak sudut Bulan–Matahari</span></div><div class="metric card"><small>Waktu Matahari</small><b id="sunTransit">--:--</b><span>Perkiraan waktu istiwā'</span></div></div>
+            <p id="skySimulationNote" class="hint sky-note">Posisi Bulan dihitung dengan pendekatan astronomi edukatif. Untuk penentuan hilal atau keperluan resmi, gunakan ephemeris falak tepercaya.</p>
           </section>
 
           <!-- Rashdul -->
@@ -361,7 +364,7 @@
   </div>
 
   <script src="config.js"></script>
-  <script src="script.js"></script>\n  <script src="hilal.js"></script>
+  <script src="script.js"></script>  <script src="hilal.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </body>
 </html>

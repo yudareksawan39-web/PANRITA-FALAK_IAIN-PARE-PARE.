@@ -363,3 +363,62 @@ body.dark .bottom-nav{background:rgba(6,20,39,.97)!important;border-color:rgba(2
 .location-selects select:disabled{opacity:.6;cursor:not-allowed}
 #locationSearchStatus{margin:10px 0;line-height:1.5}
 @media(max-width:480px){.location-selects{grid-template-columns:1fr}.location-picker{padding:16px}}
+
+/* Perapian responsif: kamera Teodolit dan kalkulator pada layar HP/WebView Android */
+.theodolite-camera-card{overflow:hidden}
+.theodolite-camera-frame{height:clamp(280px,48vh,520px);min-height:280px;max-height:520px;isolation:isolate}
+#theodoliteVideo{object-fit:cover;object-position:center;background:#06111f}
+.camera-placeholder{max-width:100%;padding:18px}
+.camera-reticle{z-index:3}
+.theodolite-camera-card>.hint{margin:10px 2px 0}
+.formula-tabs{display:flex;flex-wrap:wrap;overflow:visible;gap:7px}
+.formula-tab{flex:1 1 auto;min-width:max-content;text-align:center;border:1px solid transparent}
+.formula-tab.active{border-color:var(--line);box-shadow:0 2px 8px rgba(12,36,60,.06)}
+.formula-card{min-width:0;overflow:hidden}
+.formula-card .formula{max-width:100%;overflow-wrap:anywhere;word-break:normal}
+.formula-detail,.known-values,.known-item,.calculation-step{min-width:0}
+.known-item b,.calculation-step p,.formula-detail p{overflow-wrap:anywhere;word-break:normal}
+.prayer-calculation-table{max-width:100%;overscroll-behavior-x:contain}
+.settings-grid,.theodolite-input-grid,.theodolite-result-grid{min-width:0}
+.settings-card,.theodolite-form-card,.theodolite-results-card{min-width:0;overflow:hidden}
+button,input,select{max-width:100%}
+@media(max-width:800px){
+  .theodolite-camera-frame{height:clamp(260px,42vh,430px);min-height:260px;max-height:430px}
+  .theodolite-camera-head{gap:10px}
+  .theodolite-camera-head .button-row{display:flex;flex-wrap:wrap;gap:7px}
+  .theodolite-camera-head .button-row button{min-width:0;flex:1 1 120px;padding-inline:10px}
+  .formula-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .formula-tab{min-width:0;white-space:normal;line-height:1.25;padding:11px 8px}
+  .formula-card{padding:16px}
+}
+@media(max-width:520px){
+  .theodolite-camera-card,.theodolite-form-card,.theodolite-results-card,.theodolite-note{padding:12px}
+  .theodolite-camera-frame{height:38vh;min-height:250px;max-height:360px;border-radius:13px}
+  .camera-placeholder span{font-size:38px}
+  .camera-placeholder small{font-size:12px}
+  .camera-reticle{gap:4px}
+  .camera-reticle i{width:clamp(20px,7vw,36px)}
+  .camera-reticle b{width:clamp(34px,10vw,54px);height:clamp(34px,10vw,54px)}
+  .theodolite-camera-head .button-row button{flex:1 1 100%;min-height:42px}
+  .formula-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .formula-card{padding:13px}
+  .formula{font-size:15px;line-height:1.65;padding:12px;margin:11px 0}
+  .formula-small{font-size:14px}
+  .known-grid{grid-template-columns:1fr}
+  .known-item{padding:11px}
+  .formula-detail{padding-top:12px;margin-top:14px}
+  .result-banner{padding:14px}
+  .result-banner strong{font-size:1.7rem}
+  .coordinate-form{grid-template-columns:minmax(0,1fr)}
+  .coordinate-actions .primary-btn,.coordinate-actions .secondary-btn{flex:1 1 100%}
+}
+
+/* Elegant navy-to-black theme and the Sun/Moon simulation module */
+body.dark{--bg:#030814;--panel:#0a1223;--text:#edf3ff;--muted:#9cabc4;--line:#202e49;--accent:#d7bb78;--accent2:#f0d99b;--soft:#101e35;--shadow:0 14px 34px rgba(0,0,0,.34)}
+.dark .topbar,.dark .sidebar,.dark .bottom-nav,.dark .feature-card,.dark .card,.dark .map-summary>div,.dark .map-card,.dark .map-notice{background-color:var(--panel);color:var(--text)}
+.dark .content{background:radial-gradient(ellipse at 85% 0%,rgba(22,45,82,.18),transparent 42%),var(--bg)}
+.dark .primary-btn{background:linear-gradient(135deg,#d8bd7d,#aa8a4c);color:#071020}.dark .secondary-btn{background:#12213a;color:#dce7fb;border-color:#2a3b5b}.dark .nav-item:hover,.dark .nav-item.active{background:#152540;color:#f0d99b}.dark .metric,.dark .coordinate-value,.dark .settings-card,.dark .formula-tabs,.dark .calculation-steps,.dark .coordinate-calculator{border-color:var(--line)}
+.sky-controls{display:grid;grid-template-columns:minmax(180px,1.3fr) minmax(140px,.7fr) auto;gap:14px;align-items:end;padding:16px;margin:14px 0}.sky-controls label{display:grid;gap:7px;color:var(--muted);font-size:12px;font-weight:700}.sky-controls input,.sky-controls select{width:100%;min-height:44px;border-radius:11px;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:10px 12px}.sun-visual{background:#050b18;border-color:#24334e}.sun-arc{background:linear-gradient(180deg,#091329 0%,#14284a 52%,#233852 78%,#080f1d 100%)}.sun-arc.scene-day{background:linear-gradient(180deg,#102e52 0%,#255b88 42%,#8aaac0 72%,#1b3040 100%)}.sun-arc.scene-dawn{background:linear-gradient(180deg,#111c3c 0%,#57476b 36%,#b06f79 65%,#c49a8a 82%,#101827 100%)}.sun-arc.scene-sunset{background:linear-gradient(180deg,#101a38 0%,#584566 35%,#b46a68 65%,#d5a07a 82%,#101827 100%)}.sun-arc.scene-night{background:linear-gradient(180deg,#02050d 0%,#050d1d 52%,#0b1a2c 100%)}
+.moon-dot{position:absolute;z-index:3;left:65%;top:32%;width:clamp(20px,3.5vw,36px);height:clamp(20px,3.5vw,36px);display:grid;place-items:center;border-radius:50%;font-size:0;opacity:0;background:radial-gradient(circle at 36% 32%,#fff 0 18%,#dce9ff 42%,#9eb5dc 67%,transparent 72%);box-shadow:0 0 18px 5px rgba(204,224,255,.28),0 0 38px 12px rgba(157,188,245,.12);transform:translate(-50%,-50%);transition:left .8s ease,top .8s ease,opacity .8s ease}.scene-night .moon-dot{opacity:1}.sun-scene-caption{max-width:calc(100% - 28px)}.sky-note{padding:12px 15px;border:1px solid var(--line);border-radius:14px;background:rgba(9,18,35,.55);margin-top:12px}.moon-metrics{margin-top:12px}
+@media(max-width:800px){.sky-controls{grid-template-columns:1fr 1fr}.sky-controls .button-row{grid-column:1/-1}.sky-controls .button-row button{flex:1}}
+@media(max-width:560px){.sky-controls{grid-template-columns:1fr;padding:13px}.sky-controls .button-row{display:grid;grid-template-columns:1fr}.sun-visual{height:300px}.metric-grid.moon-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metric-grid.moon-metrics .metric{padding:13px}.metric-grid.moon-metrics .metric b{font-size:20px}.sun-scene-caption{left:10px;right:10px;bottom:10px;padding:10px}.sun-scene-caption span{font-size:10px}}
