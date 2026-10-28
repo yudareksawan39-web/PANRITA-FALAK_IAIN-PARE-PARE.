@@ -21,10 +21,12 @@ const state = {
   cameraStream:null,
   gpsAccuracy:null,
   settings:{
-    method:"umm", fajr:18, isha:18, asrFactor:1, timezone:8
+    method:"auto", fajr:20, isha:18, asrFactor:1, timezone:8
   }
 };
 
+// Lokasi tersimpan agar seluruh modul memakai satu acuan koordinat.
+try { const saved=JSON.parse(localStorage.getItem("panritaFalakLocation")||"null"); if(saved && Number.isFinite(saved.lat) && Number.isFinite(saved.lon)){ state.location={...state.location,...saved}; } } catch(e){}
 const $ = (s,root=document)=>root.querySelector(s);
 const $$ = (s,root=document)=>[...root.querySelectorAll(s)];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -142,19 +144,33 @@ function prayerTimes(date,loc=settingsLocation()){
   // Compute solar noon more robustly: local clock 12 - lon/15 - eqtime/60 + tz.
   const solarNoon=12 - sp.eqTime/60 - lon/15 + tz;
   const hSunrise=hourAngleForAltitude(lat,sp.decl,-0.833);
-  const hFajr=hourAngleForAltitude(lat,sp.decl,-state.settings.fajr);
-  const hIsha=hourAngleForAltitude(lat,sp.decl,-state.settings.isha);
+  const angles=effectivePrayerAngles();
+  const hFajr=hourAngleForAltitude(lat,sp.decl,-angles.fajr);
+  const hIsha=hourAngleForAltitude(lat,sp.decl,-angles.isha);
   const sunrise=hSunrise==null?NaN:solarNoon-hSunrise/15;
   const sunset=hSunrise==null?NaN:solarNoon+hSunrise/15;
   const fajr=hFajr==null?NaN:solarNoon-hFajr/15;
   // Umm al-Qura uses a fixed interval after sunset (90 minutes; Ramadan exception is not auto-detected).
-  const isha=state.settings.method==="umm" ? (Number.isFinite(sunset)?sunset+1.5:NaN) : (hIsha==null?NaN:solarNoon+hIsha/15);
+  const isha=effectivePrayerMethod()==="umm" ? (Number.isFinite(sunset)?sunset+1.5:NaN) : (hIsha==null?NaN:solarNoon+hIsha/15);
   const asrAlt=r2d(Math.atan(1/(state.settings.asrFactor+Math.tan(Math.abs(d2r(lat-sp.decl))))));
   const hAsr=hourAngleForAltitude(lat,sp.decl,asrAlt);
   const asr=hAsr==null?NaN:solarNoon+hAsr/15;
   return {imsak:fajr-10/60,fajr,sunrise,zuhur:solarNoon,asr,sunset: sunset,maghrib:sunset,isha};
 }
 function settingsLocation(){return state.location}
+// Mode otomatis memakai acuan Kemenag RI untuk koordinat Indonesia. Di luar Indonesia,
+// gunakan sudut Muslim World League sebagai fallback umum; pengguna tetap dapat memilih metode manual.
+function effectivePrayerMethod(){
+  if(state.settings.method!=="auto") return state.settings.method;
+  const {lat,lon}=state.location;
+  const inIndonesia=lat>=-11.5 && lat<=6.5 && lon>=94 && lon<=141.5;
+  return inIndonesia?"kemenag":"mw";
+}
+function effectivePrayerAngles(){
+  if(state.settings.method!=="auto") return {fajr:state.settings.fajr,isha:state.settings.isha};
+  const method=effectivePrayerMethod();
+  return method==="kemenag"?{fajr:20,isha:18}:{fajr:18,isha:17};
+}
 
 function getLocationName(lat,lon){
   if(Math.abs(lat+4.0189)<.2 && Math.abs(lon-119.6238)<.2)return DEFAULT.name;
@@ -162,12 +178,30 @@ function getLocationName(lat,lon){
 }
 function setLocation(lat,lon,elevation=50,name=getLocationName(lat,lon)){
   state.location={...state.location,lat:Number(lat),lon:Number(lon),elevation:Number(elevation)||0,name};
+  try{localStorage.setItem("panritaFalakLocation",JSON.stringify(state.location));}catch(e){}
+  if($("#locationNameInput")) $("#locationNameInput").value=name;
   $("#latInput").value=state.location.lat; $("#lonInput").value=state.location.lon; $("#elevInput").value=state.location.elevation;
   updateAll();
   if(state.page==="calc"){const active=$(".formula-tab.active");if(active)renderFormula(active.dataset.formula)}
   if(state.mapReady) updateMap();
   updateGoogleEarthLink();
   if($("#page-theodolite")) updateTeodolite();
+}
+function chooseLocationIndonesia(){
+  let modal=document.getElementById("locationPickerModal");
+  if(!modal){
+    modal=document.createElement("div"); modal.id="locationPickerModal"; modal.className="location-picker-backdrop";
+    modal.innerHTML=`<div class="location-picker card" role="dialog" aria-modal="true" aria-labelledby="locationPickerTitle"><div class="picker-head"><div><small>LOKASI PANRITA FALAK</small><h3 id="locationPickerTitle">Pilih lokasi di Indonesia</h3></div><button type="button" class="picker-close" aria-label="Tutup">✕</button></div><p>Pilih provinsi terlebih dahulu, kemudian pilih kota atau kabupaten. Nama dan koordinat lokasi akan diperbarui setelah lokasi dipilih.</p><div class="location-selects"><label>Provinsi<select id="locationProvinceSelect"><option value="">Memuat daftar provinsi…</option></select></label><label>Kota/Kabupaten<select id="locationCitySelect" disabled><option value="">Pilih provinsi terlebih dahulu</option></select></label></div><div id="locationSearchStatus" role="status" aria-live="polite"></div><div id="locationSearchResults"></div><small class="picker-foot">Koneksi internet diperlukan untuk memuat wilayah dan menemukan koordinat lokasi. GPS tetap tersedia melalui tombol “Lokasi saat ini”.</small></div>`;
+    document.body.appendChild(modal);
+    const province=modal.querySelector("#locationProvinceSelect"), city=modal.querySelector("#locationCitySelect"), status=modal.querySelector("#locationSearchStatus"), results=modal.querySelector("#locationSearchResults");
+    modal.querySelector(".picker-close").addEventListener("click",()=>modal.remove());
+    modal.addEventListener("click",e=>{if(e.target===modal)modal.remove()});
+    const getJson=async url=>{const res=await fetch(url,{headers:{"Accept":"application/json"}});if(!res.ok)throw new Error("Layanan data wilayah tidak merespons.");return res.json()};
+    (async()=>{try{status.textContent="Memuat daftar provinsi Indonesia…";const data=await getJson("https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json");province.replaceChildren(new Option("Pilih provinsi",""));data.sort((a,b)=>a.name.localeCompare(b.name,"id")).forEach(item=>province.add(new Option(item.name,item.id)));status.textContent="Pilih provinsi, lalu kota/kabupaten.";}catch(err){province.replaceChildren(new Option("Daftar provinsi gagal dimuat",""));status.textContent="Tidak dapat memuat daftar wilayah. Periksa koneksi internet lalu tutup dan buka kembali pilihan lokasi."}})();
+    province.addEventListener("change",async()=>{city.disabled=true;city.replaceChildren(new Option("Memuat kota/kabupaten…",""));results.replaceChildren();if(!province.value){city.replaceChildren(new Option("Pilih provinsi terlebih dahulu",""));status.textContent="Pilih provinsi terlebih dahulu.";return}try{status.textContent="Memuat kota/kabupaten…";const data=await getJson(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${encodeURIComponent(province.value)}.json`);city.replaceChildren(new Option("Pilih kota/kabupaten",""));data.sort((a,b)=>a.name.localeCompare(b.name,"id")).forEach(item=>city.add(new Option(item.name,item.name)));city.disabled=false;status.textContent=`Provinsi ${province.options[province.selectedIndex].text} dipilih. Sekarang pilih kota/kabupaten.`;}catch(err){city.replaceChildren(new Option("Gagal memuat kota/kabupaten",""));status.textContent="Daftar kota/kabupaten gagal dimuat. Periksa koneksi internet."}});
+    city.addEventListener("change",async()=>{const cityName=city.value, provinceName=province.options[province.selectedIndex]?.text;if(!cityName||!provinceName)return;status.textContent=`Mencari koordinat ${cityName}, ${provinceName}…`;results.replaceChildren();try{const query=`${cityName}, ${provinceName}, Indonesia`;const url="https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=id&addressdetails=1&limit=5&q="+encodeURIComponent(query);const res=await fetch(url,{headers:{"Accept-Language":"id"}});if(!res.ok)throw new Error("Geocoding gagal");const data=await res.json();let item=data.find(x=>x.address?.state===provinceName)||data[0];if(!item){status.textContent="Koordinat lokasi belum ditemukan. Pilih kota/kabupaten lain atau gunakan GPS.";return}const b=document.createElement("button");b.type="button";b.className="location-result";const title=document.createElement("strong"), detail=document.createElement("small");title.textContent=`${cityName}, ${provinceName}`;detail.textContent=`Koordinat: ${Number(item.lat).toFixed(5)}, ${Number(item.lon).toFixed(5)} • Tekan untuk menggunakan lokasi ini`;b.append(title,detail);b.addEventListener("click",()=>{const lat=Number(item.lat),lon=Number(item.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon)){status.textContent="Koordinat tidak valid. Silakan coba lagi.";return}const name=`${cityName}, ${provinceName}`;const tz=lon<115?7:(lon<132?8:9);setLocation(lat,lon,state.location.elevation,name);state.settings.timezone=tz;if($("#timezoneSelect"))$("#timezoneSelect").value=String(tz);saveSettings();modal.remove();alert("Lokasi diperbarui: "+name+". Perhitungan yang bergantung pada lokasi telah diperbarui.")});results.appendChild(b);status.textContent="Pastikan nama lokasi benar, lalu tekan hasil di bawah untuk menerapkan lokasi.";}catch(err){status.textContent="Koordinat gagal dicari. Periksa koneksi internet lalu pilih kota/kabupaten kembali."}});
+  }
+  document.body.appendChild(modal); modal.querySelector("#locationProvinceSelect")?.focus();
 }
 function requestLocation(){
   if(!navigator.geolocation){alert("Browser ini tidak mendukung GPS.");return}
@@ -551,7 +585,7 @@ function stopTheodoliteCamera(){if(state.cameraStream)state.cameraStream.getTrac
 function renderPrayer(){
   const d=state.selectedDate,t=prayerTimes(d);
   $("#selectedDate").textContent=formatDate(d); $("#prayerDateLabel").textContent=formatDate(d,{dateStyle:"full"});
-  $("#prayerMethodLabel").textContent=$("#methodSelect").selectedOptions[0].textContent;
+  $("#prayerMethodLabel").textContent=state.settings.method==="auto"?`Otomatis berdasarkan lokasi (${effectivePrayerMethod()==="kemenag"?"Kemenag RI":"Muslim World League"})`:$("#methodSelect").selectedOptions[0].textContent;
   $("#prayerZoneLabel").textContent=timezoneLabel();
   const rows=[["Imsak",t.imsak,"☾"],["Subuh",t.fajr,"☾"],["Terbit",t.sunrise,"☀"],["Zuhur",t.zuhur,"◉"],["Asar",t.asr,"◒"],["Maghrib",t.maghrib,"◐"],["Isya",t.isha,"☾"]];
   const next=nextPrayerData(d);
@@ -617,14 +651,15 @@ function calculatorData(r){
   const noonDate=new Date(now.getFullYear(),now.getMonth(),now.getDate(),12);
   const noonSp=solarPosition(noonDate,r.lat,r.lon,tz);
   const hRise=hourAngleForAltitude(r.lat,noonSp.decl,-0.833);
-  const hFajr=hourAngleForAltitude(r.lat,noonSp.decl,-18);
-  const hIsha=hourAngleForAltitude(r.lat,noonSp.decl,-18);
+  const angles=effectivePrayerAngles();
+  const hFajr=hourAngleForAltitude(r.lat,noonSp.decl,-angles.fajr);
+  const hIsha=hourAngleForAltitude(r.lat,noonSp.decl,-angles.isha);
   const solarNoon=12-noonSp.eqTime/60-r.lon/15+tz;
   const sunrise=hRise==null?NaN:solarNoon-hRise/15;
   const sunset=hRise==null?NaN:solarNoon+hRise/15;
   const fajr=hFajr==null?NaN:solarNoon-hFajr/15;
   // Umm al-Qura uses a fixed interval after sunset (90 minutes; Ramadan exception is not auto-detected).
-  const isha=state.settings.method==="umm" ? (Number.isFinite(sunset)?sunset+1.5:NaN) : (hIsha==null?NaN:solarNoon+hIsha/15);
+  const isha=effectivePrayerMethod()==="umm" ? (Number.isFinite(sunset)?sunset+1.5:NaN) : (hIsha==null?NaN:solarNoon+hIsha/15);
   const asrAlt=r2d(Math.atan(1/(1+Math.tan(Math.abs(d2r(r.lat-noonSp.decl))))));
   const hAsr=hourAngleForAltitude(r.lat,noonSp.decl,asrAlt);
   const asr=hAsr==null?NaN:solarNoon+hAsr/15;
@@ -786,8 +821,9 @@ function renderFormula(type){
     const times=prayerTimes(d,state.location);
     const solarNoon=12-sp.eqTime/60-lon/15+tz;
     const hSunrise=hourAngleForAltitude(lat,sp.decl,-0.833);
-    const hFajr=hourAngleForAltitude(lat,sp.decl,-state.settings.fajr);
-    const hIsha=hourAngleForAltitude(lat,sp.decl,-state.settings.isha);
+    const angles=effectivePrayerAngles();
+    const hFajr=hourAngleForAltitude(lat,sp.decl,-angles.fajr);
+    const hIsha=hourAngleForAltitude(lat,sp.decl,-angles.isha);
     const asrAltitude=r2d(Math.atan(1/(state.settings.asrFactor+Math.tan(Math.abs(rad(lat-sp.decl))))));
     const hAsr=hourAngleForAltitude(lat,sp.decl,asrAltitude);
     const rows=[
@@ -797,8 +833,8 @@ function renderFormula(type){
       ["Zona waktu",`UTC${tz>=0?"+":""}${tz}`],
       ["Deklinasi Matahari (δ)",r(sp.decl)],
       ["Persamaan waktu (E)",`${n(sp.eqTime,2)} menit`],
-      ["Sudut Subuh",`−${n(state.settings.fajr,1)}°`],
-      [state.settings.method==="umm"?"Isya (interval Umm al-Qura)":"Sudut Isya",state.settings.method==="umm"?"90 menit setelah Magrib":`−${n(state.settings.isha,1)}°`],
+      ["Sudut Subuh",`−${n(effectivePrayerAngles().fajr,1)}°`],
+      [effectivePrayerMethod()==="umm"?"Isya (interval Umm al-Qura)":"Sudut Isya",effectivePrayerMethod()==="umm"?"90 menit setelah Magrib":`−${n(effectivePrayerAngles().isha,1)}°`],
       ["Faktor Asar",`${state.settings.asrFactor} × tinggi benda`]
     ];
     const eventRows=[
@@ -807,14 +843,14 @@ function renderFormula(type){
       ["Zuhur",0,0,times.zuhur,"12 − E/60 − λ/15 + zona", "titik kulminasi Matahari"],
       ["Asar",asrAltitude,hAsr,times.asr,"+H/15", "sesudah Zuhur"],
       ["Magrib",-0.833,hSunrise,times.maghrib,"+H/15", "saat Matahari terbenam"],
-      ["Isya",state.settings.method==="umm"?NaN:-state.settings.isha,state.settings.method==="umm"?null:hIsha,times.isha,state.settings.method==="umm"?"+90 menit":"+H/15", "sesudah terbenam" ]
+      ["Isya",effectivePrayerMethod()==="umm"?NaN:-effectivePrayerAngles().isha,effectivePrayerMethod()==="umm"?null:hIsha,times.isha,effectivePrayerMethod()==="umm"?"+90 menit":"+H/15", "sesudah terbenam" ]
     ];
     c.innerHTML=`<h3>${t("Posisi Matahari & Waktu Salat")}</h3>
       <div class="formula">H = arccos((sin(h) − sin(φ) sin(δ)) / (cos(φ) cos(δ)))</div>
       ${known(rows)}
       ${section("Persamaan waktu dan Zuhur",`<div class="formula formula-small">Waktu Zuhur = 12 − E/60 − λ/15 + zona waktu</div><p>= 12 − (${n(sp.eqTime,2)}/60) − (${n(lon,4)}/15) + (${n(tz,0)})</p><p>Waktu Zuhur = <b>${formatTime(solarNoon)} ${tz===8?"WITA":tz===7?"WIB":tz===9?"WIT":"UTC"}</b></p>`)}
       ${section("Langkah perhitungan sudut waktu",`<p>Sudut waktu dihitung dari tinggi Matahari yang ditetapkan untuk setiap peristiwa, dengan deklinasi Matahari (δ) dan lintang lokasi (φ) pada tanggal terpilih.</p><div class="formula formula-small">H = arccos((sin(h) − sin(φ) sin(δ)) / (cos(φ) cos(δ)))</div><div class="calculation-steps">${eventRows.filter(([name])=>name!=="Zuhur").map(([name,alt,h,time,sign,meaning])=>`<div class="calculation-step"><b>${name}</b><div class="formula formula-small">H = arccos((sin(${r(alt)}) − sin(${r(lat)}) sin(${r(sp.decl)})) / (cos(${r(lat)}) cos(${r(sp.decl)})))</div><p>Hasil sudut waktu: <b>${h==null||!Number.isFinite(h)?"tidak terdefinisi":r(h)}</b>. ${meaning}.</p></div>`).join("")}</div>`)}
-      ${section("Substitusi untuk mendapatkan waktu",`<p>Persamaan waktu (E) mengoreksi perbedaan antara waktu Matahari sejati dan waktu rata-rata. Bujur (λ) serta zona waktu digunakan untuk memperoleh waktu Zuhur lokal.</p><div class="formula formula-small">Zuhur = 12 − E/60 − λ/15 + zona waktu</div><p>= 12 − ${n(sp.eqTime,2)}/60 − ${n(lon,4)}/15 + ${n(tz,0)} = <b>${formatTime(solarNoon)}</b> (${tz===8?"WITA":tz===7?"WIB":tz===9?"WIT":"UTC"}).</p><p>Untuk Subuh dan Terbit, sudut waktu dikurangkan dari Zuhur; untuk Asar dan Magrib, sudut waktu ditambahkan. Metode Umm al-Qura menggunakan interval 90 menit setelah Magrib (pengecualian Ramadan belum otomatis); metode bersudut menggunakan H/15.</p><div class="calculation-steps">${eventRows.map(([name,alt,h,time,sign,meaning])=>{let formulaText;if(name==="Zuhur")formulaText=`${formatTime(solarNoon)} (waktu kulminasi)`;else if(name==="Isya"&&state.settings.method==="umm")formulaText=`${formatTime(times.maghrib)} + 90 menit = ${formatTime(time)}`;else if(h==null||!Number.isFinite(h))formulaText=`${formatTime(time)} (sudut waktu tidak terdefinisi)`;else{const op=(name==="Subuh"||name==="Terbit Matahari")?"−":"+";formulaText=`${formatTime(solarNoon)} ${op} (${n(h,4)}/15) jam = ${formatTime(time)}`;}return `<div class="calculation-step"><b>${name}</b><p>${formulaText}</p><small>Tinggi Matahari: ${Number.isFinite(alt)?r(alt):"—"}; sudut waktu: ${h==null||!Number.isFinite(h)?"—":r(h)}.</small></div>`}).join("")}</div>`)}
+      ${section("Substitusi untuk mendapatkan waktu",`<p>Persamaan waktu (E) mengoreksi perbedaan antara waktu Matahari sejati dan waktu rata-rata. Bujur (λ) serta zona waktu digunakan untuk memperoleh waktu Zuhur lokal.</p><div class="formula formula-small">Zuhur = 12 − E/60 − λ/15 + zona waktu</div><p>= 12 − ${n(sp.eqTime,2)}/60 − ${n(lon,4)}/15 + ${n(tz,0)} = <b>${formatTime(solarNoon)}</b> (${tz===8?"WITA":tz===7?"WIB":tz===9?"WIT":"UTC"}).</p><p>Untuk Subuh dan Terbit, sudut waktu dikurangkan dari Zuhur; untuk Asar dan Magrib, sudut waktu ditambahkan. Metode Umm al-Qura menggunakan interval 90 menit setelah Magrib (pengecualian Ramadan belum otomatis); metode bersudut menggunakan H/15.</p><div class="calculation-steps">${eventRows.map(([name,alt,h,time,sign,meaning])=>{let formulaText;if(name==="Zuhur")formulaText=`${formatTime(solarNoon)} (waktu kulminasi)`;else if(name==="Isya"&&effectivePrayerMethod()==="umm")formulaText=`${formatTime(times.maghrib)} + 90 menit = ${formatTime(time)}`;else if(h==null||!Number.isFinite(h))formulaText=`${formatTime(time)} (sudut waktu tidak terdefinisi)`;else{const op=(name==="Subuh"||name==="Terbit Matahari")?"−":"+";formulaText=`${formatTime(solarNoon)} ${op} (${n(h,4)}/15) jam = ${formatTime(time)}`;}return `<div class="calculation-step"><b>${name}</b><p>${formulaText}</p><small>Tinggi Matahari: ${Number.isFinite(alt)?r(alt):"—"}; sudut waktu: ${h==null||!Number.isFinite(h)?"—":r(h)}.</small></div>`}).join("")}</div>`)}
       ${section("Hasil akhir waktu salat",`<div class="prayer-calculation-table"><table><thead><tr><th>Peristiwa</th><th>Tinggi Matahari (h)</th><th>Sudut waktu (H)</th><th>Hasil waktu</th></tr></thead><tbody>${eventRows.map(([name,alt,h,time])=>`<tr><td>${name}</td><td>${Number.isFinite(alt)?r(alt):"—"}</td><td>${Number.isFinite(h)?r(h):"—"}</td><td><b>${formatTime(time)}</b></td></tr>`).join("")}</tbody></table></div><p class="formula-explain">Tanggal dan lokasi mengikuti pengaturan aplikasi. Hasil ditampilkan hingga menit terdekat dan dapat berbeda dari jadwal resmi karena metode hisab, sudut Subuh/Isya, faktor Asar, pembulatan, dan parameter setempat.</p>`)}
     `;
   }
@@ -849,7 +885,8 @@ function loadSettings(){
     const l=JSON.parse(localStorage.getItem("falakLocation")||"null"); if(l)state.location={...state.location,...l};
   }catch(e){}
   $("#fajrAngle").value=state.settings.fajr;$("#ishaAngle").value=state.settings.isha;$("#timezoneSelect").value=state.settings.timezone;$("#methodSelect").value=state.settings.method;$("#locationNameInput").value=state.location.name;
-  if(state.settings.method==="umm"){$("#ishaAngle").disabled=true;$("#ishaAngle").title="Umm al-Qura menggunakan interval tetap 90 menit setelah Maghrib (pengecualian Ramadan belum otomatis)."}
+  if(state.settings.method==="auto"){const a=effectivePrayerAngles();$("#fajrAngle").value=a.fajr;$("#ishaAngle").value=a.isha;}
+  if(effectivePrayerMethod()==="umm"){$("#ishaAngle").disabled=true;$("#ishaAngle").title="Umm al-Qura menggunakan interval tetap 90 menit setelah Maghrib (pengecualian Ramadan belum otomatis)."}
   $(`input[name="asr"][value="${state.settings.asrFactor}"]`).checked=true;
   setLocation(state.location.lat,state.location.lon,state.location.elevation,state.location.name);
 }
@@ -1066,8 +1103,8 @@ let prayerAlarmTimer=null, lastPrayerAlarmKey="";
 const prayerAdhanAudio=new Audio("assets/azan-pengguna.mpeg"); prayerAdhanAudio.preload="auto";
 function prayerAlertStatus(msg){const el=document.getElementById("prayerAlertStatus");if(el)el.textContent=msg;}
 async function enablePrayerAlerts(){
-  if(!("Notification" in window)){prayerAlertStatus("Perangkat/browser ini tidak mendukung notifikasi web.");return;}
-  if(!window.isSecureContext && location.hostname!=="localhost"){prayerAlertStatus("Buka melalui HTTPS atau localhost untuk meminta izin notifikasi.");return;}
+  if(!("Notification" in window)){prayerAlertStatus("Notifikasi browser tidak tersedia pada mode ini. Pengingat web tidak dapat aktif; diperlukan integrasi notifikasi Android native pada APK.");return;}
+  if(!window.isSecureContext && location.hostname!=="localhost"){prayerAlertStatus("Browser hanya mengizinkan notifikasi pada HTTPS/localhost. Buka aplikasi melalui HTTPS atau pasang integrasi notifikasi Android native agar pengingat dapat bekerja di APK.");return;}
   let permission=Notification.permission;
   if(permission==="default") permission=await Notification.requestPermission();
   if(permission!=="granted"){prayerAlertStatus("Izin notifikasi tidak diberikan; pengingat tetap nonaktif.");return;}
@@ -1081,9 +1118,11 @@ function disablePrayerAlerts(){localStorage.setItem("falakPrayerAlerts","false")
 function checkPrayerAlarm(){
   if(localStorage.getItem("falakPrayerAlerts")!=="true")return;
   const now=new Date(), times=prayerTimes(now); const entries=[["Subuh",times.fajr],["Zuhur",times.zuhur],["Asar",times.asr],["Maghrib",times.maghrib],["Isya",times.isha]];
-  for(const [name,dt] of entries){if(!(dt instanceof Date)||!Number.isFinite(dt.getTime()))continue;
-    if(Math.abs(now.getTime()-dt.getTime())<=8000){const key=name+"-"+now.toDateString();if(key===lastPrayerAlarmKey)continue;lastPrayerAlarmKey=key;
-      try{new Notification("Panrita Falak • Waktu "+name,{body:"Telah masuk perkiraan waktu "+name+" berdasarkan lokasi dan metode hisab aplikasi."});}catch(e){}
+  const nowMinutes=now.getHours()*60+now.getMinutes();
+  for(const [name,hourValue] of entries){if(!Number.isFinite(hourValue))continue;
+    const prayerMinutes=((Math.round(hourValue*60)%1440)+1440)%1440;
+    if(nowMinutes===prayerMinutes){const key=name+"-"+now.toDateString();if(key===lastPrayerAlarmKey)continue;lastPrayerAlarmKey=key;
+      try{if("Notification" in window && Notification.permission==="granted")new Notification("Panrita Falak • Waktu "+name,{body:"Perkiraan waktu "+name+" telah tiba berdasarkan lokasi dan metode hisab aplikasi."});}catch(e){}
       prayerAdhanAudio.currentTime=0;prayerAdhanAudio.play().then(()=>prayerAlertStatus("Pengingat "+name+" diputar.")).catch(()=>prayerAlertStatus("Notifikasi waktu "+name+" dikirim, tetapi pemutaran audio diblokir perangkat. Buka aplikasi dan uji suara terlebih dahulu."));
     }
   }
@@ -1118,6 +1157,7 @@ function bind(){
   window.syncFalakThemeButtons=syncThemeButtons;
   $("#languageSelect")?.addEventListener("change",e=>setLanguage(e.target.value));
   $$('[data-action="get-location"]').forEach(b=>b.addEventListener("click",requestLocation));
+  $$(`[data-action="choose-location"]`).forEach(b=>b.addEventListener("click",chooseLocationIndonesia));
   $$('[data-action="activate-compass"]').forEach(b=>b.addEventListener("click",activateCompass));
   $$('[data-action="refresh-map"]').forEach(b=>b.addEventListener("click",()=>{initEmbeddedMap();if(state.mapReady){updateMap();state.map.invalidateSize();state.map.setView([state.location.lat,state.location.lon],13)}}));
   $$('[data-action="map-center-user"]').forEach(b=>b.addEventListener("click",()=>{if(!state.mapReady)initEmbeddedMap();if(state.mapReady)state.map.setView([state.location.lat,state.location.lon],13)}));
@@ -1137,9 +1177,10 @@ function bind(){
   $$('[data-action="theodolite-use-qibla"]').forEach(b=>b.addEventListener("click",()=>{$("#tdMeasuredAzimuth").value=qiblaBearing(state.location.lat,state.location.lon).toFixed(2);calculateTheodolite()}));
   ["tdMeasuredAzimuth","tdVerticalAngle","tdSlopeDistance","tdInstrumentHeight","tdTargetHeight","tdStationElevation"].forEach(id=>$("#"+id)?.addEventListener("input",()=>{if(id==="tdStationElevation")$("#tdStationElevation").dataset.userEdited="true";calculateTheodolite()}));
   $("#methodSelect")?.addEventListener("change",()=>{
-    const presets={umm:[18.5,18],mw:[18,17],egypt:[19.5,17.5],karachi:[18,18],isna:[15,15]};
+    const presets={auto:[20,18],kemenag:[20,18],umm:[18.5,18],mw:[18,17],egypt:[19.5,17.5],karachi:[18,18],isna:[15,15]};
     const preset=presets[$("#methodSelect").value];
     if(preset){$("#fajrAngle").value=preset[0];$("#ishaAngle").value=preset[1]}
+    if($("#methodSelect").value==="auto"){const a=effectivePrayerAngles();$("#fajrAngle").value=a.fajr;$("#ishaAngle").value=a.isha;}
     if($("#methodSelect").value==="umm"){$("#ishaAngle").disabled=true;$("#ishaAngle").title="Umm al-Qura menggunakan interval tetap 90 menit setelah Maghrib (pengecualian Ramadan belum otomatis)."}
     else{$("#ishaAngle").disabled=false;$("#ishaAngle").title=""}
   });
