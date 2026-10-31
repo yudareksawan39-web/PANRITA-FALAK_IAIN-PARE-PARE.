@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">  <link rel="stylesheet" href="hilal.css">
+  <link rel="stylesheet" href="style.css"> <link rel="stylesheet" href="hilal.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style id="falak-additions">
 .app-mark img{width:76px;height:76px;object-fit:contain;display:block}
@@ -109,7 +109,7 @@
             <div class="location-card card">
               <div class="location-icon">⌖</div>
               <div><small>Lokasi Anda</small><strong id="homeLocation">Kota Parepare, Sulawesi Selatan</strong><span id="homeCoords">Lat -4.0189° • Lon 119.6238°</span></div>
-              <div class="button-row"><button class="text-btn" data-action="get-location">📍 Lokasi saat ini</button><button class="text-btn" data-action="choose-location">🇮🇩 Pilih lokasi</button></div>
+              <button class="text-btn" data-action="get-location">Gunakan GPS</button>
             </div>
 
             <div class="hero-grid">
@@ -302,13 +302,10 @@
 
           <!-- Sun -->
           <section class="page" id="page-sun">
-            <div class="page-heading"><div><span class="eyebrow">ASTRONOMI • SIMULASI LANGIT</span><h2>Posisi Matahari & Bulan</h2><p>Simulasikan keadaan langit berdasarkan tanggal, jam, dan lokasi pengamatan.</p></div></div>
+            <div class="page-heading"><div><span class="eyebrow">ASTRONOMI</span><h2>Posisi Matahari</h2><p>Azimut, ketinggian, dan waktu penting matahari.</p></div></div>
             <div class="sun-location card"><span>⌖</span><div><b id="sunLocation">Kota Parepare, Sulawesi Selatan</b><small id="sunDate">--</small></div></div>
-            <div class="card sky-controls"><div><label for="sunSimulationDate">Tanggal dan jam simulasi</label><input id="sunSimulationDate" type="datetime-local"></div><div><label for="sunSimulationTimezone">Zona waktu</label><select id="sunSimulationTimezone"><option value="7">WIB (UTC+7)</option><option value="8" selected>WITA (UTC+8)</option><option value="9">WIT (UTC+9)</option><option value="0">UTC</option></select></div><div class="button-row"><button class="primary-btn" data-action="simulate-sky">Simulasikan langit</button><button class="secondary-btn" data-action="sky-now">Gunakan waktu sekarang</button></div></div>
-            <div class="sun-visual card"><div class="sun-arc scene-day" id="sunScene"><div class="scene-stars" aria-hidden="true"></div><div class="scene-cloud scene-cloud-a" aria-hidden="true"></div><div class="scene-cloud scene-cloud-b" aria-hidden="true"></div><div class="sun-dot" id="sunDot" aria-label="Posisi Matahari">☀</div><div class="moon-dot" id="moonDot" aria-label="Posisi Bulan">☾</div><div class="horizon"></div><div class="sun-building" aria-hidden="true">⌂</div><div class="sun-scene-caption"><b id="sunSceneLabel">Langit siang</b><span id="sunSceneDetail">Simulasi berdasarkan waktu dan lokasi</span></div></div></div>
-            <div class="metric-grid"><div class="metric card"><small>Azimut Matahari</small><b id="sunAzimuth">--°</b><span id="sunDirection">--</span></div><div class="metric card"><small>Ketinggian Matahari</small><b id="sunAltitude">--°</b><span id="sunSunState">--</span></div><div class="metric card"><small>Deklinasi Matahari</small><b id="sunDeclination">--°</b><span>Sudut dari ekuator langit</span></div><div class="metric card"><small>Fase Bulan</small><b id="moonPhase">--</b><span id="moonIllumination">Iluminasi --%</span></div></div>
-            <div class="metric-grid moon-metrics"><div class="metric card"><small>Azimut Bulan</small><b id="moonAzimuth">--°</b><span id="moonDirection">--</span></div><div class="metric card"><small>Ketinggian Bulan</small><b id="moonAltitude">--°</b><span id="moonVisibility">--</span></div><div class="metric card"><small>Sudut elongasi</small><b id="moonElongation">--°</b><span>Jarak sudut Bulan–Matahari</span></div><div class="metric card"><small>Waktu Matahari</small><b id="sunTransit">--:--</b><span>Perkiraan waktu istiwā'</span></div></div>
-            <p id="skySimulationNote" class="hint sky-note">Posisi Bulan dihitung dengan pendekatan astronomi edukatif. Untuk penentuan hilal atau keperluan resmi, gunakan ephemeris falak tepercaya.</p>
+            <div class="sun-visual card"><div class="sun-arc scene-day" id="sunScene"><div class="scene-stars" aria-hidden="true"></div><div class="scene-cloud scene-cloud-a" aria-hidden="true"></div><div class="scene-cloud scene-cloud-b" aria-hidden="true"></div><div class="sun-dot" id="sunDot" aria-label="Posisi Matahari">☀</div><div class="horizon"></div><div class="sun-building" aria-hidden="true">⌂</div><div class="sun-scene-caption"><b id="sunSceneLabel">Langit siang</b><span id="sunSceneDetail">Simulasi berdasarkan waktu dan lokasi</span></div></div></div>
+            <div class="metric-grid"><div class="metric card"><small>Azimut Matahari</small><b id="sunAzimuth">--°</b><span id="sunDirection">--</span></div><div class="metric card"><small>Ketinggian Matahari</small><b id="sunAltitude">--°</b></div><div class="metric card"><small>Waktu Zawal</small><b id="sunZawal">--:--</b></div><div class="metric card"><small>Waktu Istiwā'</small><b id="sunTransit">--:--</b></div></div>
           </section>
 
           <!-- Rashdul -->
@@ -323,7 +320,7 @@
           <section class="page" id="page-settings">
             <div class="page-heading"><div><span class="eyebrow">KONFIGURASI</span><h2>Pengaturan</h2><p>Atur lokasi dan parameter hisab.</p></div><button class="primary-btn" data-action="save-settings">Simpan</button></div>
             <div class="settings-grid">
-              <div class="settings-card card"><h3>Lokasi</h3><label>Latitude<input id="latInput" type="number" step="0.000001" value="-4.0189"></label><label>Longitude<input id="lonInput" type="number" step="0.000001" value="119.6238"></label><label>Ketinggian (meter)<input id="elevInput" type="number" step="1" value="50"></label><div class="button-row"><button class="secondary-btn" data-action="get-location">📍 Lokasi saat ini</button><button class="secondary-btn" data-action="choose-location">🇮🇩 Pilih lokasi Indonesia</button><button class="secondary-btn" data-action="save-location">Simpan Lokasi</button></div></div>
+              <div class="settings-card card"><h3>Lokasi</h3><label>Latitude<input id="latInput" type="number" step="0.000001" value="-4.0189"></label><label>Longitude<input id="lonInput" type="number" step="0.000001" value="119.6238"></label><label>Ketinggian (meter)<input id="elevInput" type="number" step="1" value="50"></label><div class="button-row"><button class="secondary-btn" data-action="get-location">Ambil GPS</button><button class="secondary-btn" data-action="save-location">Simpan Lokasi</button></div></div>
               <div class="settings-card card"><h3>Metode Perhitungan Waktu Salat</h3><label>Metode Hisab<select id="methodSelect"><option value="auto" selected>Otomatis berdasarkan lokasi</option><option value="kemenag">Kemenag RI (Indonesia, estimasi hisab)</option><option value="umm">Umm al-Qura (Makkah)</option><option value="mw">Muslim World League</option><option value="egypt">Egyptian General Authority</option><option value="karachi">University of Islamic Sciences, Karachi</option><option value="isna">ISNA</option><option value="custom">Kustom</option></select></label><div class="two-col"><label>Subuh (°)<input id="fajrAngle" type="number" step="0.1" value="20"></label><label>Isya (°)<input id="ishaAngle" type="number" step="0.1" value="18"></label></div><h3>Metode Asar</h3><label class="radio"><input type="radio" name="asr" value="1" checked> Syafi'i (1 × tinggi benda)</label><label class="radio"><input type="radio" name="asr" value="2"> Hanafi (2 × tinggi benda)</label></div>
               <div class="settings-card card"><h3>Zona Waktu</h3><label>Zona<select id="timezoneSelect"><option value="8">WITA (UTC+8)</option><option value="7">WIB (UTC+7)</option><option value="9">WIT (UTC+9)</option><option value="0">UTC</option></select></label><label>Nama Lokasi<input id="locationNameInput" value="Kota Parepare, Sulawesi Selatan"></label></div>
             </div>

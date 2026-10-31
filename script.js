@@ -7,7 +7,6 @@ const DEFAULT = CFG.DEFAULT_LOCATION || {name:"Kota Parepare, Sulawesi Selatan",
 
 const state = {
   page:"home",
-  skySimulationActive:false,
   location:{...DEFAULT},
   selectedDate:new Date(),
   currentMonth:new Date(),
@@ -22,18 +21,27 @@ const state = {
   cameraStream:null,
   gpsAccuracy:null,
   settings:{
-    method:"auto", fajr:20, isha:18, asrFactor:1, timezone:8
+    method:"auto", fajr:20, isha:18, asrFactor:1, timezone:deviceTimezone()
   }
 };
 
-// Lokasi tersimpan agar seluruh modul memakai satu acuan koordinat.
-try { const saved=JSON.parse(localStorage.getItem("panritaFalakLocation")||"null"); if(saved && Number.isFinite(saved.lat) && Number.isFinite(saved.lon)){ state.location={...state.location,...saved}; } } catch(e){}
 const $ = (s,root=document)=>root.querySelector(s);
 const $$ = (s,root=document)=>[...root.querySelectorAll(s)];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
 const norm360=d=>((d%360)+360)%360;
 const pad=n=>String(Math.round(n)).padStart(2,"0");
+function deviceTimezone(){
+  const zone=Intl.DateTimeFormat().resolvedOptions().timeZone||"";
+  if(zone==="Asia/Jakarta"||zone==="Asia/Pontianak"||zone==="Asia/Pangkal_Pinang")return 7;
+  if(zone==="Asia/Makassar"||zone==="Asia/Ujung_Pandang"||zone==="Asia/Denpasar"||zone==="Asia/Kuala_Lumpur"||zone==="Asia/Singapore")return 8;
+  if(zone==="Asia/Jayapura")return 9;
+  const offset=-new Date().getTimezoneOffset()/60;
+  return Number.isFinite(offset)?offset:8;
+}
+function deviceTimezoneName(offset=deviceTimezone()){
+  if(offset===7)return "WIB";if(offset===8)return "WITA";if(offset===9)return "WIT";return `UTC${offset>=0?"+":""}${offset}`;
+}
 
 function formatDate(d, opts={dateStyle:"long"}) {
   return new Intl.DateTimeFormat("id-ID",{...opts,timeZone:"Asia/Makassar"}).format(d);
@@ -68,7 +76,7 @@ function dayOfYear(date){
 }
 /* NOAA-style solar position approximation. Accuracy is normally within roughly a fraction
    of a degree for the Sun's geometric position; local prayer times remain method-dependent. */
-function solarPosition(date, lat, lon, timezone){
+function solarPosition(date, lat, lon, timezone, wallClockMinutes=null){
   const utcMs=date.getTime();
   const jd=utcMs/86400000+2440587.5;
   const T=(jd-2451545)/36525;
@@ -86,7 +94,7 @@ function solarPosition(date, lat, lon, timezone){
   const decl=r2d(Math.asin(Math.sin(d2r(obliqCorr))*Math.sin(d2r(lambda))));
   const y=Math.tan(d2r(obliqCorr/2))**2;
   const eqTime=4*r2d(y*Math.sin(2*d2r(L))-2*e*Math.sin(d2r(M))+4*e*y*Math.sin(d2r(M))*Math.cos(2*d2r(L))-0.5*y*y*Math.sin(4*d2r(L))-1.25*e*e*Math.sin(2*d2r(M)));
-  const localMinutes=date.getHours()*60+date.getMinutes()+date.getSeconds()/60;
+  const localMinutes=Number.isFinite(wallClockMinutes)?wallClockMinutes:(date.getHours()*60+date.getMinutes()+date.getSeconds()/60);
   const solarMinutes=localMinutes+eqTime+4*lon-60*timezone;
   const tst=((solarMinutes%1440)+1440)%1440;
   const ha=tst/4-180;
@@ -95,66 +103,6 @@ function solarPosition(date, lat, lon, timezone){
   let az=r2d(Math.atan2(Math.sin(d2r(ha)),Math.cos(d2r(ha))*Math.sin(latr)-Math.tan(decr)*Math.cos(latr)))+180;
   az=norm360(az);
   return {decl,eqTime,altitude,azimuth:az,solarMinutes,ha};
-}
-
-
-/* Low-precision lunar ephemeris for educational sky simulation (not official hilal criteria). */
-function moonPositionApprox(date,lat,lon,timezone){
-  const y=date.getFullYear(),m=date.getMonth()+1,d=date.getDate();
-  const wallHours=date.getHours()+date.getMinutes()/60+date.getSeconds()/3600;
-  const jd=julianDay(y,m,d)+(wallHours-timezone)/24;
-  const D=jd-2451543.5;
-  const N=norm360(125.1228-0.0529538083*D), i=5.1454;
-  const w=norm360(318.0634+0.1643573223*D), a=60.2666, e=0.0549;
-  const M=norm360(115.3654+13.0649929509*D);
-  let E=M+(180/Math.PI)*e*Math.sin(d2r(M))*(1+e*Math.cos(d2r(M)));
-  const xv=a*(Math.cos(d2r(E))-e), yv=a*Math.sqrt(1-e*e)*Math.sin(d2r(E));
-  const v=r2d(Math.atan2(yv,xv)), r=Math.sqrt(xv*xv+yv*yv);
-  const xh=r*(Math.cos(d2r(N))*Math.cos(d2r(v+w))-Math.sin(d2r(N))*Math.sin(d2r(v+w))*Math.cos(d2r(i)));
-  const yh=r*(Math.sin(d2r(N))*Math.cos(d2r(v+w))+Math.cos(d2r(N))*Math.sin(d2r(v+w))*Math.cos(d2r(i)));
-  const zh=r*Math.sin(d2r(v+w))*Math.sin(d2r(i));
-  let lonEcl=norm360(r2d(Math.atan2(yh,xh))), latEcl=r2d(Math.atan2(zh,Math.sqrt(xh*xh+yh*yh)));
-  const L=norm360(N+w+M), Ms=norm360(356.0470+0.9856002585*D), Ls=norm360(280.460+0.9856474*D);
-  const lunarMean=norm360(L), elongMean=norm360(lunarMean-Ls);
-  lonEcl += -1.274*Math.sin(d2r(M-2*elongMean))+0.658*Math.sin(d2r(2*elongMean))-0.186*Math.sin(d2r(Ms)-0); // principal lunar perturbations
-  latEcl += -0.173*Math.sin(d2r(M-2*elongMean));
-  const eps=d2r(23.4393-3.563e-7*D), lam=d2r(lonEcl), bet=d2r(latEcl);
-  const ra=norm360(r2d(Math.atan2(Math.sin(lam)*Math.cos(eps)-Math.tan(bet)*Math.sin(eps),Math.cos(lam))));
-  const dec=r2d(Math.asin(Math.sin(bet)*Math.cos(eps)+Math.cos(bet)*Math.sin(eps)*Math.sin(lam)));
-  const T=(jd-2451545.0)/36525;
-  const gmst=norm360(280.46061837+360.98564736629*(jd-2451545)+0.000387933*T*T-T*T*T/38710000);
-  const H=((gmst+lon-ra+540)%360)-180;
-  const latR=d2r(lat), decR=d2r(dec), hR=d2r(H);
-  const alt=r2d(Math.asin(Math.sin(latR)*Math.sin(decR)+Math.cos(latR)*Math.cos(decR)*Math.cos(hR)));
-  const az=norm360(r2d(Math.atan2(Math.sin(hR),Math.cos(hR)*Math.sin(latR)-Math.tan(decR)*Math.cos(latR)))+180);
-  const sp=solarPosition(date,lat,lon,timezone);
-  const cosEl=Math.sin(d2r(sp.decl))*Math.sin(d2r(dec))+Math.cos(d2r(sp.decl))*Math.cos(d2r(dec))*Math.cos(d2r(sp.azimuth-az));
-  const elong=r2d(Math.acos(clamp(cosEl,-1,1)));
-  const syn=29.530588853, age=((jd-2451550.1)%syn+syn)%syn, illum=(1-Math.cos(2*Math.PI*age/syn))/2*100;
-  const phases=[[1.85,"Bulan baru"],[5.53,"Sabit muda"],[9.22,"Perbani awal"],[12.91,"Cembung awal"],[16.61,"Purnama"],[20.30,"Cembung akhir"],[23.99,"Perbani akhir"],[27.68,"Sabit tua"],[29.53,"Bulan baru"]];
-  let phase="Sabit"; for(const [edge,name] of phases){if(age<edge){phase=name;break;}}
-  return {azimuth:az,altitude:alt,declination:dec,elongation:elong,illumination:illum,phase,age};
-}
-function renderSkySimulation(date,timezone){
-  const sp=solarPosition(date,state.location.lat,state.location.lon,timezone), mp=moonPositionApprox(date,state.location.lat,state.location.lon,timezone);
-  const put=(id,val)=>{const el=$("#"+id);if(el)el.textContent=val;};
-  put("sunAzimuth",sp.azimuth.toFixed(2)+"°");put("sunDirection",cardinal(sp.azimuth));put("sunAltitude",sp.altitude.toFixed(2)+"°");put("sunDeclination",sp.decl.toFixed(2)+"°");
-  put("sunSunState",sp.altitude>0?"Di atas horizon":"Di bawah horizon");put("moonAzimuth",mp.azimuth.toFixed(2)+"°");put("moonDirection",cardinal(mp.azimuth));put("moonAltitude",mp.altitude.toFixed(2)+"°");put("moonVisibility",mp.altitude>0?"Secara geometris di atas horizon":"Di bawah horizon");put("moonPhase",mp.phase);put("moonIllumination","Iluminasi "+mp.illumination.toFixed(1)+"%");put("moonElongation",mp.elongation.toFixed(2)+"°");
-  const xSun=clamp(50+(sp.azimuth-180)/3.6,7,93), ySun=clamp(78-((sp.altitude+5)/85)*68,10,82);
-  const xMoon=clamp(50+(mp.azimuth-180)/3.6,7,93), yMoon=clamp(78-((mp.altitude+5)/85)*68,10,82);
-  const sunDot=$("#sunDot"),moonDot=$("#moonDot");if(sunDot){sunDot.style.left=xSun+"%";sunDot.style.top=ySun+"%";sunDot.style.opacity=sp.altitude>-1?"1":"0";}if(moonDot){moonDot.style.left=xMoon+"%";moonDot.style.top=yMoon+"%";moonDot.style.opacity=mp.altitude>-1?"1":"0";moonDot.title="Bulan: azimut "+mp.azimuth.toFixed(2)+"°, ketinggian "+mp.altitude.toFixed(2)+"°";}
-  const scene=$("#sunScene"),label=$("#sunSceneLabel"),detail=$("#sunSceneDetail");if(scene){scene.classList.remove("scene-day","scene-dawn","scene-sunset","scene-night");let phase,title;if(sp.altitude>=8){phase="scene-day";title="Langit siang";}else if(sp.altitude>=-6){phase=date.getHours()<12?"scene-dawn":"scene-sunset";title=date.getHours()<12?"Langit fajar / pagi":"Langit senja";}else{phase="scene-night";title="Langit malam";}scene.classList.add(phase);if(label)label.textContent=title;if(detail)detail.textContent="Matahari "+sp.altitude.toFixed(1)+"° · Bulan "+mp.altitude.toFixed(1)+"° dari horizon";}
-  put("sunDate",new Intl.DateTimeFormat("id-ID",{dateStyle:"full",timeStyle:"short",timeZone:timezone===7?"Asia/Jakarta":timezone===9?"Asia/Jayapura":timezone===0?"UTC":"Asia/Makassar"}).format(new Date(date.getFullYear(),date.getMonth(),date.getDate(),date.getHours(),date.getMinutes())));
-  put("sunTransit",formatTime(prayerTimes(date).zuhur));
-  const note=$("#skySimulationNote");if(note)note.textContent=`Simulasi untuk ${state.location.name||"lokasi terpilih"} (${state.location.lat.toFixed(4)}°, ${state.location.lon.toFixed(4)}°), UTC${timezone>=0?"+":""}${timezone}. Azimut dihitung dari utara searah jarum jam. Posisi Bulan dan iluminasi memakai pendekatan astronomi edukatif; bukan ephemeris resmi atau penentu tunggal terlihatnya hilal.`;
-}
-function runSkySimulation(useNow=false){
-  const input=$("#sunSimulationDate"),zoneEl=$("#sunSimulationTimezone");if(!input||!zoneEl)return;
-  if(useNow){input.value=localDateTimeValue();zoneEl.value=String(state.settings.timezone);state.skySimulationActive=false;updateSun();}
-  const zone=Number(zoneEl.value),val=input.value;if(!val||!Number.isFinite(zone))return;
-  const [ds,ts]=val.split("T"),[yy,mm,dd]=ds.split("-").map(Number),[hh,mi]=ts.split(":").map(Number);
-  const date=new Date(yy,mm-1,dd,hh,mi,0,0);if(Number.isNaN(date.getTime()))return;
-  state.skySimulationActive=!useNow;renderSkySimulation(date,zone);
 }
 
 function julianDay(y,m,d){ if(m<=2){y--;m+=12} return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d-1524.5; }
@@ -239,8 +187,7 @@ function getLocationName(lat,lon){
 }
 function setLocation(lat,lon,elevation=50,name=getLocationName(lat,lon)){
   state.location={...state.location,lat:Number(lat),lon:Number(lon),elevation:Number(elevation)||0,name};
-  try{localStorage.setItem("panritaFalakLocation",JSON.stringify(state.location));}catch(e){}
-  if($("#locationNameInput")) $("#locationNameInput").value=name;
+  window.FALAK_HILAL_LOCATION={lat:state.location.lat,lon:state.location.lon,name:state.location.name,accuracy:state.gpsAccuracy||undefined};
   $("#latInput").value=state.location.lat; $("#lonInput").value=state.location.lon; $("#elevInput").value=state.location.elevation;
   updateAll();
   if(state.page==="calc"){const active=$(".formula-tab.active");if(active)renderFormula(active.dataset.formula)}
@@ -248,29 +195,16 @@ function setLocation(lat,lon,elevation=50,name=getLocationName(lat,lon)){
   updateGoogleEarthLink();
   if($("#page-theodolite")) updateTeodolite();
 }
-function chooseLocationIndonesia(){
-  let modal=document.getElementById("locationPickerModal");
-  if(!modal){
-    modal=document.createElement("div"); modal.id="locationPickerModal"; modal.className="location-picker-backdrop";
-    modal.innerHTML=`<div class="location-picker card" role="dialog" aria-modal="true" aria-labelledby="locationPickerTitle"><div class="picker-head"><div><small>LOKASI PANRITA FALAK</small><h3 id="locationPickerTitle">Pilih lokasi di Indonesia</h3></div><button type="button" class="picker-close" aria-label="Tutup">✕</button></div><p>Pilih provinsi terlebih dahulu, kemudian pilih kota atau kabupaten. Nama dan koordinat lokasi akan diperbarui setelah lokasi dipilih.</p><div class="location-selects"><label>Provinsi<select id="locationProvinceSelect"><option value="">Memuat daftar provinsi…</option></select></label><label>Kota/Kabupaten<select id="locationCitySelect" disabled><option value="">Pilih provinsi terlebih dahulu</option></select></label></div><div id="locationSearchStatus" role="status" aria-live="polite"></div><div id="locationSearchResults"></div><small class="picker-foot">Koneksi internet diperlukan untuk memuat wilayah dan menemukan koordinat lokasi. GPS tetap tersedia melalui tombol “Lokasi saat ini”.</small></div>`;
-    document.body.appendChild(modal);
-    const province=modal.querySelector("#locationProvinceSelect"), city=modal.querySelector("#locationCitySelect"), status=modal.querySelector("#locationSearchStatus"), results=modal.querySelector("#locationSearchResults");
-    modal.querySelector(".picker-close").addEventListener("click",()=>modal.remove());
-    modal.addEventListener("click",e=>{if(e.target===modal)modal.remove()});
-    const getJson=async url=>{const res=await fetch(url,{headers:{"Accept":"application/json"}});if(!res.ok)throw new Error("Layanan data wilayah tidak merespons.");return res.json()};
-    (async()=>{try{status.textContent="Memuat daftar provinsi Indonesia…";const data=await getJson("https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json");province.replaceChildren(new Option("Pilih provinsi",""));data.sort((a,b)=>a.name.localeCompare(b.name,"id")).forEach(item=>province.add(new Option(item.name,item.id)));status.textContent="Pilih provinsi, lalu kota/kabupaten.";}catch(err){province.replaceChildren(new Option("Daftar provinsi gagal dimuat",""));status.textContent="Tidak dapat memuat daftar wilayah. Periksa koneksi internet lalu tutup dan buka kembali pilihan lokasi."}})();
-    province.addEventListener("change",async()=>{city.disabled=true;city.replaceChildren(new Option("Memuat kota/kabupaten…",""));results.replaceChildren();if(!province.value){city.replaceChildren(new Option("Pilih provinsi terlebih dahulu",""));status.textContent="Pilih provinsi terlebih dahulu.";return}try{status.textContent="Memuat kota/kabupaten…";const data=await getJson(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${encodeURIComponent(province.value)}.json`);city.replaceChildren(new Option("Pilih kota/kabupaten",""));data.sort((a,b)=>a.name.localeCompare(b.name,"id")).forEach(item=>city.add(new Option(item.name,item.name)));city.disabled=false;status.textContent=`Provinsi ${province.options[province.selectedIndex].text} dipilih. Sekarang pilih kota/kabupaten.`;}catch(err){city.replaceChildren(new Option("Gagal memuat kota/kabupaten",""));status.textContent="Daftar kota/kabupaten gagal dimuat. Periksa koneksi internet."}});
-    city.addEventListener("change",async()=>{const cityName=city.value, provinceName=province.options[province.selectedIndex]?.text;if(!cityName||!provinceName)return;status.textContent=`Mencari koordinat ${cityName}, ${provinceName}…`;results.replaceChildren();try{const query=`${cityName}, ${provinceName}, Indonesia`;const url="https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=id&addressdetails=1&limit=5&q="+encodeURIComponent(query);const res=await fetch(url,{headers:{"Accept-Language":"id"}});if(!res.ok)throw new Error("Geocoding gagal");const data=await res.json();let item=data.find(x=>x.address?.state===provinceName)||data[0];if(!item){status.textContent="Koordinat lokasi belum ditemukan. Pilih kota/kabupaten lain atau gunakan GPS.";return}const b=document.createElement("button");b.type="button";b.className="location-result";const title=document.createElement("strong"), detail=document.createElement("small");title.textContent=`${cityName}, ${provinceName}`;detail.textContent=`Koordinat: ${Number(item.lat).toFixed(5)}, ${Number(item.lon).toFixed(5)} • Tekan untuk menggunakan lokasi ini`;b.append(title,detail);b.addEventListener("click",()=>{const lat=Number(item.lat),lon=Number(item.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon)){status.textContent="Koordinat tidak valid. Silakan coba lagi.";return}const name=`${cityName}, ${provinceName}`;const tz=lon<115?7:(lon<127.5?8:9);setLocation(lat,lon,state.location.elevation,name);state.settings.timezone=tz;if($("#timezoneSelect"))$("#timezoneSelect").value=String(tz);saveSettings();modal.remove();alert("Lokasi diperbarui: "+name+". Perhitungan yang bergantung pada lokasi telah diperbarui.")});results.appendChild(b);status.textContent="Pastikan nama lokasi benar, lalu tekan hasil di bawah untuk menerapkan lokasi.";}catch(err){status.textContent="Koordinat gagal dicari. Periksa koneksi internet lalu pilih kota/kabupaten kembali."}});
-  }
-  document.body.appendChild(modal); modal.querySelector("#locationProvinceSelect")?.focus();
-}
-function requestLocation(){
-  if(!navigator.geolocation){alert("Browser ini tidak mendukung GPS.");return}
+function requestLocation(silent=false){
+  if(!navigator.geolocation){if(!silent)alert("Perangkat atau browser ini tidak menyediakan GPS.");return;}
   navigator.geolocation.getCurrentPosition(pos=>{
     state.gpsAccuracy=Number.isFinite(pos.coords.accuracy)?pos.coords.accuracy:null;
-    setLocation(pos.coords.latitude,pos.coords.longitude,pos.coords.altitude||state.location.elevation);
+    const name=`Lokasi perangkat (${pos.coords.latitude.toFixed(4)}°, ${pos.coords.longitude.toFixed(4)}°)`;
+    setLocation(pos.coords.latitude,pos.coords.longitude,pos.coords.altitude||state.location.elevation,name);
+    try{localStorage.setItem("falakLocation",JSON.stringify(state.location));}catch(e){}
     updateTeodolite();
-  },err=>alert("GPS tidak dapat digunakan: "+err.message),{enableHighAccuracy:true,timeout:15000,maximumAge:30000});
+    if(window.FALAK_HILAL_REFRESH)window.FALAK_HILAL_REFRESH();
+  },err=>{if(!silent)alert("Lokasi perangkat tidak dapat diambil: "+err.message+". Anda tetap dapat memilih lokasi atau mencoba GPS lagi.");},{enableHighAccuracy:true,timeout:18000,maximumAge:60000});
 }
 
 function navigate(page){
@@ -303,7 +237,6 @@ function updateAll(){
   renderRashdul();
   updateCompassVisual();
   updateMapIfReady();
-  if($("#sunSimulationDate") && $("#sunSimulationDate").value) runSkySimulation(false);
 }
 function nextPrayerData(date){
   const t=prayerTimes(date);
@@ -318,7 +251,6 @@ function updateSun(){
   $("#sunAzimuth").textContent=sp.azimuth.toFixed(1)+"°"; $("#sunAltitude").textContent=sp.altitude.toFixed(1)+"°"; $("#sunDirection").textContent=cardinal(sp.azimuth);
   $("#sunZawal").textContent=formatTime(prayerTimes(now).zuhur); $("#sunTransit").textContent=formatTime(prayerTimes(now).zuhur);
   $("#sunDate").textContent=formatDate(now);
-  const decl=$("#sunDeclination");if(decl)decl.textContent=sp.decl.toFixed(2)+"°";const stateEl=$("#sunSunState");if(stateEl)stateEl.textContent=sp.altitude>0?"Di atas horizon":"Di bawah horizon";
   // Place the Sun according to its computed altitude, not azimuth alone.
   const x=clamp(50+(sp.azimuth-180)/3.6,8,92);
   const y=clamp(78-((sp.altitude+5)/85)*68,10,82);
@@ -335,7 +267,14 @@ function updateSun(){
     scene.setAttribute("aria-label",title+" berdasarkan perhitungan posisi Matahari");
   }
 }
-function updateClock(){const n=new Date();$("#liveClock").textContent=new Intl.DateTimeFormat("id-ID",{hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(n);if(!state.skySimulationActive)updateSun()}
+function updateClock(){
+  const n=new Date(),zone=deviceTimezone(),label=deviceTimezoneName(zone);
+  const clock=$("#liveClock");if(clock)clock.textContent=new Intl.DateTimeFormat("id-ID",{hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(n);
+  const zoneEl=$("#homeTimezone");if(zoneEl)zoneEl.textContent=label;
+  const zoneSub=zoneEl?.parentElement?.querySelector("span");if(zoneSub)zoneSub.textContent=`UTC${zone>=0?"+":""}${zone}`;
+  updateSun();
+  if(!simulationManuallyEdited){const field=$("#solarSimulationDate");if(field){field.value=localDateTimeValue(n);const simZone=$("#solarSimulationTimezone");if(simZone)simZone.value=String(state.settings.timezone);simulateSunPosition();}}
+}
 function updateCompassVisual(){
   const b=qiblaBearing(state.location.lat,state.location.lon);
   const heading=Number.isFinite(state.sensorHeading) ? state.sensorHeading : null;
@@ -559,6 +498,7 @@ function calculateTheodolite(){
 function escapeHtml(value){
   return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 }
+let simulationManuallyEdited=false;
 function localDateTimeValue(date=new Date()){
   const pad2=n=>String(n).padStart(2,"0");
   return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
@@ -570,10 +510,15 @@ function simulateSunPosition(){
   if(!dateValue||!Number.isFinite(zone)){if(note)note.textContent="Masukkan tanggal, waktu, dan zona waktu yang valid.";return;}
   const parts=dateValue.split("T"),dparts=(parts[0]||"").split("-").map(Number),tparts=(parts[1]||"").split(":").map(Number);
   if(dparts.length!==3||tparts.length<2||dparts.some(v=>!Number.isFinite(v))||tparts.some(v=>!Number.isFinite(v))){if(note)note.textContent="Format tanggal/waktu tidak valid.";return;}
-  // Create a local-clock Date so solarPosition uses the entered wall-clock time; timezone is passed separately.
-  const date=new Date(dparts[0],dparts[1]-1,dparts[2],tparts[0],tparts[1],0,0);
+  // Interpret the entered clock in the selected zone, then convert to the device's local Date.
+  // solarPosition reads local clock fields; this keeps the entered wall-clock consistent even
+  // if the device zone differs from the selected WIB/WITA/WIT zone.
+  const wallAsUtc=Date.UTC(dparts[0],dparts[1]-1,dparts[2],tparts[0],tparts[1],0,0);
+  const targetInstant=wallAsUtc-zone*3600000;
+  const date=new Date(targetInstant);
   if(Number.isNaN(date.getTime())){if(note)note.textContent="Tanggal/waktu tidak dapat dibaca.";return;}
-  const sp=solarPosition(date,state.location.lat,state.location.lon,zone);
+  // Build a date-like local clock for the existing solver while preserving the correct instant.
+  const sp=solarPosition(date,state.location.lat,state.location.lon,zone,tparts[0]*60+tparts[1]);
   const put=(id,val)=>{const el=$("#"+id);if(el)el.textContent=val;};
   put("simSunAz",sp.azimuth.toFixed(3)+"°");put("simSunAlt",sp.altitude.toFixed(3)+"°");put("simSunDecl",sp.decl.toFixed(3)+"°");
   put("simSunState",sp.altitude>0?"Di atas horizon":sp.altitude<0?"Di bawah horizon":"Di horizon");
@@ -635,13 +580,23 @@ function updateGoogleEarthLink(){
 
 async function startTheodoliteCamera(){
   const video=$("#theodoliteVideo"),placeholder=$("#cameraPlaceholder"),status=$("#cameraStatus");
-  if(!navigator.mediaDevices?.getUserMedia){if(status)status.textContent="Kamera tidak tersedia di konteks ini. Gunakan APK/WebView dengan izin kamera atau jalankan melalui HTTPS.";return;}
+  if(!navigator.mediaDevices?.getUserMedia){if(status)status.textContent="Kamera tidak tersedia. Pastikan izin kamera Android aktif dan aplikasi dibuka melalui WebView yang mendukung kamera.";return;}
   try{
     if(state.cameraStream)state.cameraStream.getTracks().forEach(t=>t.stop());
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false});
-    state.cameraStream=stream;video.srcObject=stream;video.classList.add("is-live");placeholder.style.display="none";
-    await video.play().catch(()=>{});if(status)status.textContent="Kamera aktif (belakang jika tersedia)";
-  }catch(err){if(status)status.textContent="Kamera gagal: "+(err.name==="NotAllowedError"?"izin ditolak":"periksa izin kamera dan pengaturan APK");console.warn("Kamera Teodolit Falak:",err);}
+    const attempts=[
+      {video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false},
+      {video:{facingMode:"environment"},audio:false},
+      {video:true,audio:false}
+    ];
+    let stream=null,lastError=null;
+    for(const constraints of attempts){try{stream=await navigator.mediaDevices.getUserMedia(constraints);break;}catch(e){lastError=e;}}
+    if(!stream)throw lastError||new Error("Tidak ada kamera yang tersedia.");
+    state.cameraStream=stream;video.setAttribute("playsinline","");video.setAttribute("autoplay","");video.muted=true;video.srcObject=stream;
+    await new Promise((resolve,reject)=>{if(video.readyState>=2){resolve();return;}const timer=setTimeout(()=>resolve(),2500);video.onloadedmetadata=()=>{clearTimeout(timer);resolve();};video.onerror=()=>{clearTimeout(timer);reject(new Error("Pratinjau kamera gagal dimuat."));};});
+    await video.play();video.classList.add("is-live");if(placeholder)placeholder.style.display="none";
+    const track=stream.getVideoTracks()[0],settings=track?.getSettings?.()||{};
+    if(status)status.textContent=`Kamera aktif${settings.facingMode==="environment"?" (belakang)":""}. Penanda hanya panduan visual.`;
+  }catch(err){if(state.cameraStream)state.cameraStream.getTracks().forEach(t=>t.stop());state.cameraStream=null;if(video)video.srcObject=null;if(status)status.textContent="Kamera gagal dibuka: "+(err.name==="NotAllowedError"?"izin kamera ditolak. Aktifkan izin Kamera pada pengaturan Android.":err.name==="NotFoundError"?"kamera tidak ditemukan pada perangkat.":err.message||"periksa izin kamera dan pengaturan APK.");console.warn("Kamera Teodolit Falak:",err);}
 }
 function stopTheodoliteCamera(){if(state.cameraStream)state.cameraStream.getTracks().forEach(t=>t.stop());state.cameraStream=null;const v=$("#theodoliteVideo"),p=$("#cameraPlaceholder");if(v){v.pause();v.srcObject=null;v.classList.remove("is-live")}if(p)p.style.display="grid";const s=$("#cameraStatus");if(s)s.textContent="Kamera dimatikan"}
 
@@ -723,7 +678,7 @@ function calculatorData(r){
   const fajr=hFajr==null?NaN:solarNoon-hFajr/15;
   // Umm al-Qura uses a fixed interval after sunset (90 minutes; Ramadan exception is not auto-detected).
   const isha=effectivePrayerMethod()==="umm" ? (Number.isFinite(sunset)?sunset+1.5:NaN) : (hIsha==null?NaN:solarNoon+hIsha/15);
-  const asrAlt=r2d(Math.atan(1/(state.settings.asrFactor+Math.tan(Math.abs(d2r(r.lat-noonSp.decl))))));
+  const asrAlt=r2d(Math.atan(1/(1+Math.tan(Math.abs(d2r(r.lat-noonSp.decl))))));
   const hAsr=hourAngleForAltitude(r.lat,noonSp.decl,asrAlt);
   const asr=hAsr==null?NaN:solarNoon+hAsr/15;
   return {q,dist,sp,sunrise,sunset,fajr,solarNoon,asr,isha,tz};
@@ -1219,23 +1174,23 @@ function bind(){
   }));
   window.syncFalakThemeButtons=syncThemeButtons;
   $("#languageSelect")?.addEventListener("change",e=>setLanguage(e.target.value));
-  $$('[data-action="get-location"]').forEach(b=>b.addEventListener("click",requestLocation));
-  $$(`[data-action="choose-location"]`).forEach(b=>b.addEventListener("click",chooseLocationIndonesia));
+  $$('[data-action="get-location"]').forEach(b=>b.addEventListener("click",()=>requestLocation(false)));
   $$('[data-action="activate-compass"]').forEach(b=>b.addEventListener("click",activateCompass));
   $$('[data-action="refresh-map"]').forEach(b=>b.addEventListener("click",()=>{initEmbeddedMap();if(state.mapReady){updateMap();state.map.invalidateSize();state.map.setView([state.location.lat,state.location.lon],13)}}));
   $$('[data-action="map-center-user"]').forEach(b=>b.addEventListener("click",()=>{if(!state.mapReady)initEmbeddedMap();if(state.mapReady)state.map.setView([state.location.lat,state.location.lon],13)}));
   $$('[data-action="map-show-kaaba"]').forEach(b=>b.addEventListener("click",()=>{if(!state.mapReady)initEmbeddedMap();if(state.mapReady)state.map.fitBounds([[state.location.lat,state.location.lon],[KAABA.lat,KAABA.lon]],{padding:[24,24],maxZoom:5})}));
   $$('[data-action="google-earth"]').forEach(b=>b.addEventListener("click",openGoogleEarth));
   $$('[data-action="simulate-sun"]').forEach(b=>b.addEventListener("click",simulateSunPosition));
-  $$('[data-action="use-current-sun-time"]').forEach(b=>b.addEventListener("click",()=>{$("#solarSimulationDate").value=localDateTimeValue();$("#solarSimulationTimezone").value=String(state.settings.timezone);simulateSunPosition()}));
-  $$('[data-action="simulate-sky"]').forEach(b=>b.addEventListener("click",()=>runSkySimulation(false)));
-  $$('[data-action="sky-now"]').forEach(b=>b.addEventListener("click",()=>runSkySimulation(true)));
+  $$('[data-action="use-current-sun-time"]').forEach(b=>b.addEventListener("click",()=>{simulationManuallyEdited=false;$("#solarSimulationDate").value=localDateTimeValue();$("#solarSimulationTimezone").value=String(state.settings.timezone);simulateSunPosition()}));
+  $("#solarSimulationDate")?.addEventListener("input",()=>{simulationManuallyEdited=true;simulateSunPosition()});
+  $("#solarSimulationTimezone")?.addEventListener("change",()=>{simulationManuallyEdited=true;simulateSunPosition()});
+  $$('[data-action="simulate-sun"]').forEach(b=>b.addEventListener("click",()=>{simulationManuallyEdited=true;simulateSunPosition()}));
   $$('[data-action="save-observation"]').forEach(b=>b.addEventListener("click",saveObservation));
   $$('[data-action="export-observation-report"]').forEach(b=>b.addEventListener("click",exportObservationReport));
   $$('[data-action="clear-observations"]').forEach(b=>b.addEventListener("click",clearObservations));
   $$('[data-action="camera-start"]').forEach(b=>b.addEventListener("click",startTheodoliteCamera));
   $$('[data-action="camera-stop"]').forEach(b=>b.addEventListener("click",stopTheodoliteCamera));
-  $$('[data-action="theodolite-gps"]').forEach(b=>b.addEventListener("click",requestLocation));
+  $$('[data-action="theodolite-gps"]').forEach(b=>b.addEventListener("click",()=>requestLocation(false)));
   $$('[data-action="theodolite-sensor"]').forEach(b=>b.addEventListener("click",activateCompass));
   $$('[data-action="theodolite-calc"]').forEach(b=>b.addEventListener("click",calculateTheodolite));
   $$('[data-action="theodolite-use-heading"]').forEach(b=>b.addEventListener("click",()=>{if(Number.isFinite(state.sensorHeading)){$("#tdMeasuredAzimuth").value=state.sensorHeading.toFixed(2);calculateTheodolite()}else alert("Aktifkan sensor arah terlebih dahulu, atau masukkan azimut secara manual.")}));
@@ -1273,16 +1228,18 @@ function bind(){
 document.addEventListener("DOMContentLoaded",()=>{
   bind();
   languageObserver.observe(document.body,{subtree:true,childList:true,characterData:true});
-  if(localStorage.getItem("falakDark")!=="false"){document.body.classList.add("dark");localStorage.setItem("falakDark","true");}
-  else document.body.classList.remove("dark");
+  if(localStorage.getItem("falakDark")==="true")document.body.classList.add("dark");
+  else if(localStorage.getItem("falakDark")==="false")document.body.classList.remove("dark");
   if(window.syncFalakThemeButtons)window.syncFalakThemeButtons();
+  const hadSavedSettings=!!localStorage.getItem("falakSettings"),hadSavedLocation=!!localStorage.getItem("falakLocation");
+  if(!hadSavedSettings)state.settings.timezone=deviceTimezone();
   loadSettings();
+  // First launch uses the device clock/time zone and requests device location; later launches
+  // preserve a location the user has explicitly saved.
   updateClock();setInterval(updateClock,1000);
+  if(!hadSavedLocation)requestLocation(true);
   renderPrayer();renderMonthly();renderFormula("qibla");
   updateTeodolite();
-  const skyDate=$("#sunSimulationDate");if(skyDate)skyDate.value=localDateTimeValue();
-  const skyZone=$("#sunSimulationTimezone");if(skyZone)skyZone.value=String(state.settings.timezone);
-  runSkySimulation(false);
   const simDate=$("#solarSimulationDate");if(simDate)simDate.value=localDateTimeValue();
   const simZone=$("#solarSimulationTimezone");if(simZone)simZone.value=String(state.settings.timezone);
   renderObservationRecords();updateGoogleEarthLink();simulateSunPosition();

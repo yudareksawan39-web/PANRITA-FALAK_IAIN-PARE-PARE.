@@ -59,3 +59,10 @@ body.dark .rashdul-day.today{box-shadow:inset 0 0 0 2px #b18b38}
 .hilal-camera-wrap.is-fullscreen .hilal-reticle{width:90px;height:90px;border:1px solid #fff9;box-shadow:0 0 0 1px #0004,0 0 20px #fff2}
 .hilal-camera-wrap.is-fullscreen .hilal-reticle:before{width:140px}.hilal-camera-wrap.is-fullscreen .hilal-reticle:after{height:140px}
 @media(max-width:560px){.hilal-camera-wrap.is-fullscreen .hilal-direction-arrow{right:18px;top:52%;width:52px;height:52px}.hilal-camera-wrap.is-fullscreen .hilal-camera-label{left:12px;right:12px}.hilal-camera-wrap.is-fullscreen .hilal-camera-guidance{width:max-content;max-width:86vw}}
+
+/* Kamera rukyat: kurangi gangguan teks di atas citra, terutama pada layar Android kecil. */
+.hilal-camera-wrap.is-fullscreen .hilal-camera-guidance{font-size:9px;max-width:78vw;padding:6px 9px;opacity:.88;}
+.hilal-camera-wrap.is-fullscreen .hilal-camera-bottom-note{font-size:10px;max-width:88vw;margin:auto;left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:88vw;opacity:.82;}
+.hilal-camera-wrap.is-fullscreen .hilal-camera-label{left:12px;right:auto;bottom:max(48px,calc(env(safe-area-inset-bottom) + 40px));max-width:calc(100vw - 24px);width:max-content;max-width:80vw;}
+.hilal-camera-wrap.is-fullscreen .hilal-camera-back{z-index:5;}
+@media(max-width:560px){.hilal-camera-wrap.is-fullscreen .hilal-camera-guidance{top:max(68px,calc(env(safe-area-inset-top) + 60px));}.hilal-camera-wrap.is-fullscreen .hilal-reticle{width:72px;height:72px}.hilal-camera-wrap.is-fullscreen .hilal-reticle:before{width:112px}.hilal-camera-wrap.is-fullscreen .hilal-reticle:after{height:112px}}
