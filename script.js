@@ -69,6 +69,12 @@ function cardinal(b){
   const dirs=["Utara","Timur Laut","Timur","Tenggara","Selatan","Barat Daya","Barat","Barat Laut"];
   return dirs[Math.round(norm360(b)/45)%8];
 }
+function formatDMS(value, signed=false){
+  if(!Number.isFinite(value)) return "--";
+  const sign=value<0?"−":""; let total=Math.round(Math.abs(value)*3600);
+  const d=Math.floor(total/3600); total-=d*3600; const m=Math.floor(total/60); const s=total-m*60;
+  return `${signed?sign:""}${d}° ${String(m).padStart(2,"0")}′ ${String(s).padStart(2,"0")}″`;
+}
 
 function dayOfYear(date){
   const start=new Date(Date.UTC(date.getUTCFullYear(),0,0));
@@ -226,10 +232,10 @@ function updateAll(){
   const loc=state.location.name;
   ["homeLocation","qiblaLocation","sunLocation","rashdulLocation"].forEach(id=>{const e=$("#"+id);if(e)e.textContent=loc});
   ["homeCoords","qiblaCoords"].forEach(id=>{const e=$("#"+id);if(e)e.textContent=`Lat ${state.location.lat.toFixed(4)}° • Lon ${state.location.lon.toFixed(4)}°`});
-  $("#homeQibla").textContent=b.toFixed(1)+"°"; $("#homeQiblaDir").textContent=cardinal(b);
-  $("#qiblaBearing").textContent=b.toFixed(1)+"°"; $("#qiblaDirection").textContent=cardinal(b);
-  $("#qiblaAzimuth").textContent=b.toFixed(1)+"°"; $("#qiblaCardinal").textContent=cardinal(b);
-  $("#mapBearing").textContent=b.toFixed(1)+"°"; $("#mapDirection").textContent=cardinal(b);
+  $("#homeQibla").textContent=formatDMS(b); $("#homeQiblaDir").textContent=cardinal(b);
+  $("#qiblaBearing").textContent=formatDMS(b); $("#qiblaDirection").textContent=cardinal(b);
+  $("#qiblaAzimuth").textContent=formatDMS(b); $("#qiblaCardinal").textContent=cardinal(b);
+  $("#mapBearing").textContent=formatDMS(b); $("#mapDirection").textContent=cardinal(b);
   $("#mapDistance").textContent=dist.toFixed(1)+" km"; $("#distanceMakkah").textContent=dist.toFixed(1)+" km";
   $("#mapCoords").textContent=`${state.location.lat.toFixed(4)}, ${state.location.lon.toFixed(4)}`;
   const next=nextPrayerData(new Date()); $("#nextPrayer").textContent=next.name; $("#nextPrayerTime").textContent=formatTime(next.time);
@@ -463,7 +469,7 @@ function updateTeodolite(){
   const q=qiblaBearing(state.location.lat,state.location.lon);
   const sp=solarPosition(new Date(),state.location.lat,state.location.lon,state.settings.timezone);
   const put=(id,value)=>{const el=$("#"+id);if(el)el.textContent=value};
-  put("tdQibla",q.toFixed(2)+"°");put("tdQiblaDir",cardinal(q));
+  put("tdQibla",formatDMS(q));put("tdQiblaDecimal",q.toFixed(6)+"° desimal");put("tdQiblaDir",cardinal(q));
   put("tdHeading",Number.isFinite(state.sensorHeading)?state.sensorHeading.toFixed(1)+"°":"--°");
   put("tdHeadingNote",Number.isFinite(state.sensorHeading)?"Sensor aktif; kalibrasi diperlukan":"Belum terbaca");
   put("tdSunAzimuth",sp.azimuth.toFixed(2)+"°");put("tdSunAltitude","Ketinggian "+sp.altitude.toFixed(2)+"°");
@@ -485,7 +491,7 @@ function calculateTheodolite(){
   const vr=d2r(v),horizontal=S*Math.cos(vr),vertical=S*Math.sin(vr),heightDiff=vertical+hi-ht,targetElev=elev+heightDiff;
   const azError=signedAngleDifference(az,q),sp=solarPosition(new Date(),state.location.lat,state.location.lon,state.settings.timezone),sunDiff=signedAngleDifference(sp.azimuth,q);
   const f=n=>Number(n).toFixed(3);
-  put("tdAzimuthError",f(azError)+"°");put("tdHorizontalDistance",f(horizontal)+" m");put("tdVerticalComponent",f(vertical)+" m");put("tdHeightDifference",f(heightDiff)+" m");put("tdTargetElevation",f(targetElev)+" mdpl");put("tdSunQiblaDifference",f(sunDiff)+"°");
+  put("tdAzimuthError",formatDMS(azError,true)+` (${f(azError)}°)`);put("tdHorizontalDistance",f(horizontal)+" m");put("tdVerticalComponent",f(vertical)+" m");put("tdHeightDifference",f(heightDiff)+" m");put("tdTargetElevation",f(targetElev)+" mdpl");put("tdSunQiblaDifference",f(sunDiff)+"°");
   const steps=$("#tdCalculationSteps");if(steps)steps.innerHTML=`
     <div class="calculation-step"><b>1. Nilai yang diketahui</b><p>Lintang pengamat φ = ${state.location.lat.toFixed(6)}°; bujur λ = ${state.location.lon.toFixed(6)}°; azimut bidikan A = ${f(az)}°; sudut vertikal v = ${f(v)}°; jarak miring S = ${f(S)} m; tinggi alat hᵢ = ${f(hi)} m; tinggi target hₜ = ${f(ht)} m; elevasi stasiun = ${f(elev)} mdpl.</p></div>
     <div class="calculation-step"><b>2. Azimut kiblat dan selisih bidikan</b><div class="formula formula-small">Aq = atan2(sin Δλ, cos φ · tan φK − sin φ · cos Δλ)</div><p>Azimut kiblat Aq = ${q.toFixed(4)}° (${cardinal(q)}).</p><div class="formula formula-small">ΔA = ((A − Aq + 540) mod 360) − 180</div><p>ΔA = ${f(az)}° − ${q.toFixed(4)}° (dinormalisasi) = <b>${f(azError)}°</b>. Nilai absolut yang kecil berarti bidikan mendekati azimut kiblat.</p></div>
@@ -520,9 +526,22 @@ function simulateSunPosition(){
   // Build a date-like local clock for the existing solver while preserving the correct instant.
   const sp=solarPosition(date,state.location.lat,state.location.lon,zone,tparts[0]*60+tparts[1]);
   const put=(id,val)=>{const el=$("#"+id);if(el)el.textContent=val;};
-  put("simSunAz",sp.azimuth.toFixed(3)+"°");put("simSunAlt",sp.altitude.toFixed(3)+"°");put("simSunDecl",sp.decl.toFixed(3)+"°");
+  put("simSunAz",formatDMS(sp.azimuth)+` (${sp.azimuth.toFixed(3)}°)`);put("simSunAlt",formatDMS(sp.altitude,true)+` (${sp.altitude.toFixed(3)}°)`);put("simSunDecl",formatDMS(sp.decl,true)+` (${sp.decl.toFixed(3)}°)`);
   put("simSunState",sp.altitude>0?"Di atas horizon":sp.altitude<0?"Di bawah horizon":"Di horizon");
   if(note)note.textContent=`Lokasi ${state.location.lat.toFixed(5)}°, ${state.location.lon.toFixed(5)}°; waktu lokal yang dimasukkan menggunakan UTC${zone>=0?"+":""}${zone}. Hasil merupakan prediksi geometris, bukan pembacaan sensor.`;
+}
+function calculateTrueNorth(){
+  const a=Number($("#trueNorthSunAz")?.value), time=$("#trueNorthTime")?.value||"morning", dec=$("#trueNorthDeclination")?.value||"north";
+  const formula=$("#trueNorthFormula"), result=$("#trueNorthResult"), note=$("#trueNorthNote");
+  if(!Number.isFinite(a)||$("#trueNorthSunAz")?.value.trim()===""||a<0||a>360){if(result)result.textContent="--";if(note)note.textContent="Masukkan A berupa azimut Matahari antara 0° dan 360°.";return;}
+  let expression, raw;
+  if(dec==="north"){expression="360° − A";raw=360-a;}
+  else if(time==="morning"){expression="180° + A";raw=180+a;}
+  else {expression="180° − A";raw=180-a;}
+  const out=norm360(raw);
+  if(formula)formula.textContent=expression;
+  if(result)result.textContent=formatDMS(out)+` (${out.toFixed(3)}°)`;
+  if(note)note.textContent=`A = ${a.toFixed(3)}°. Substitusi: ${expression.replace("A",`(${a.toFixed(3)}°)`)} = ${raw.toFixed(3)}°; setelah normalisasi, utara sejati = ${out.toFixed(3)}°. Pastikan tanda deklinasi dan waktu pengamatan sesuai referensi metode yang digunakan.`;
 }
 function getObservationRecords(){
   try{const parsed=JSON.parse(localStorage.getItem("panritaFalakObservations")||"[]");return Array.isArray(parsed)?parsed:[]}catch{return []}
@@ -1175,12 +1194,15 @@ function bind(){
   window.syncFalakThemeButtons=syncThemeButtons;
   $("#languageSelect")?.addEventListener("change",e=>setLanguage(e.target.value));
   $$('[data-action="get-location"]').forEach(b=>b.addEventListener("click",()=>requestLocation(false)));
+  $$('[data-action="open-location-settings"]').forEach(b=>b.addEventListener("click",()=>navigate("settings")));
   $$('[data-action="activate-compass"]').forEach(b=>b.addEventListener("click",activateCompass));
   $$('[data-action="refresh-map"]').forEach(b=>b.addEventListener("click",()=>{initEmbeddedMap();if(state.mapReady){updateMap();state.map.invalidateSize();state.map.setView([state.location.lat,state.location.lon],13)}}));
   $$('[data-action="map-center-user"]').forEach(b=>b.addEventListener("click",()=>{if(!state.mapReady)initEmbeddedMap();if(state.mapReady)state.map.setView([state.location.lat,state.location.lon],13)}));
   $$('[data-action="map-show-kaaba"]').forEach(b=>b.addEventListener("click",()=>{if(!state.mapReady)initEmbeddedMap();if(state.mapReady)state.map.fitBounds([[state.location.lat,state.location.lon],[KAABA.lat,KAABA.lon]],{padding:[24,24],maxZoom:5})}));
   $$('[data-action="google-earth"]').forEach(b=>b.addEventListener("click",openGoogleEarth));
   $$('[data-action="simulate-sun"]').forEach(b=>b.addEventListener("click",simulateSunPosition));
+  $$('[data-action="true-north-calc"]').forEach(b=>b.addEventListener("click",calculateTrueNorth));
+  ["trueNorthSunAz","trueNorthTime","trueNorthDeclination"].forEach(id=>$("#"+id)?.addEventListener("change",calculateTrueNorth));
   $$('[data-action="use-current-sun-time"]').forEach(b=>b.addEventListener("click",()=>{simulationManuallyEdited=false;$("#solarSimulationDate").value=localDateTimeValue();$("#solarSimulationTimezone").value=String(state.settings.timezone);simulateSunPosition()}));
   $("#solarSimulationDate")?.addEventListener("input",()=>{simulationManuallyEdited=true;simulateSunPosition()});
   $("#solarSimulationTimezone")?.addEventListener("change",()=>{simulationManuallyEdited=true;simulateSunPosition()});

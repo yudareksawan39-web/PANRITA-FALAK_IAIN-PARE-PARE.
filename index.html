@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css"> <link rel="stylesheet" href="hilal.css">
+  <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style id="falak-additions">
 .app-mark img{width:76px;height:76px;object-fit:contain;display:block}
@@ -78,7 +78,6 @@
             <button class="nav-item active" data-page="home"><span>🏠</span>Beranda</button>
             <button class="nav-item" data-page="qibla"><span>🕋</span>Arah Kiblat</button>
             <button class="nav-item" data-page="theodolite"><span>🔭</span>Teodolit Falak</button>
-            <button class="nav-item" data-page="hilal"><span>🌙</span>Hisab & Rukyat Hilal</button>
             <button class="nav-item" data-page="rashdul"><span>📏</span>Rashdul Kiblat</button>
             <button class="nav-item" data-page="sun"><span>☀️</span>Posisi Matahari</button>
             <button class="nav-item" data-page="prayer"><span>🕒</span>Waktu Salat</button>
@@ -109,7 +108,7 @@
             <div class="location-card card">
               <div class="location-icon">⌖</div>
               <div><small>Lokasi Anda</small><strong id="homeLocation">Kota Parepare, Sulawesi Selatan</strong><span id="homeCoords">Lat -4.0189° • Lon 119.6238°</span></div>
-              <button class="text-btn" data-action="get-location">Gunakan GPS</button>
+              <div class="button-row"><button class="text-btn" data-action="get-location">Gunakan GPS</button><button class="text-btn" data-action="open-location-settings">Ganti Lokasi</button></div>
             </div>
 
             <div class="hero-grid">
@@ -126,8 +125,7 @@
             <div class="section-title"><h3>Fitur Utama</h3><span>Ilmu Falak</span></div>
             <div class="feature-grid">
               <button class="feature-card" data-page-jump="qibla"><span>🕋</span><b>Arah Kiblat</b><small>Kompas sensor & azimut</small></button>
-              <button class="feature-card" data-page-jump="theodolite"><span>🔭</span><b>Teodolit Falak</b><small>Kamera, sudut, koordinat & hisab</small></button>
-              <button class="feature-card hilal-feature-card" data-page-jump="hilal"><span>🌙</span><b>Hisab & Rukyat Hilal</b><small>Globe 3D, peta bintang, kamera & pengingat</small></button>
+              <button class="feature-card" data-page-jump="theodolite"><span>🔭</span><b>Teodolit Falak</b><small>Simulasi Matahari, utara sejati & hisab sudut</small></button>
               <button class="feature-card" data-page-jump="prayer"><span>🕒</span><b>Waktu Salat</b><small>Jadwal harian akurat</small></button>
               <button class="feature-card" data-page-jump="monthly"><span>📅</span><b>Jadwal Bulanan</b><small>Kalender waktu salat</small></button>
               <button class="feature-card" data-page-jump="sun"><span>☀️</span><b>Posisi Matahari</b><small>Azimut & ketinggian</small></button>
@@ -135,47 +133,10 @@
               <button class="feature-card" data-page-jump="settings"><span>⚙️</span><b>Pengaturan</b><small>Metode hisab & lokasi</small></button>
             </div>
           </section>
-
-
-          <!-- Hisab & Rukyat Hilal: modul tambahan, fitur lama dipertahankan -->
-          <section class="page" id="page-hilal">
-            <div class="page-heading"><div><span class="eyebrow">ASTRONOMI BULAN</span><h2>Hisab & Rukyat Hilal</h2><p>Eksplorasi fase Bulan, perkiraan posisi hilal, dan panduan pengamatan.</p></div><div class="status-dot" id="hilalStatus">Mode edukasi</div></div>
-            <div class="hilal-hero card">
-              <div class="hilal-hero-copy"><span class="hilal-kicker">PANRITA FALAK • IAIN PAREPARE</span><h3>Mengenali hilal, memahami langit.</h3><p>Gunakan lokasi pengamat untuk melihat ringkasan astronomi dan merencanakan rukyat.</p>
-                <div class="hilal-hero-actions"><button class="primary-btn" data-action="hilal-gps">⌖ Gunakan lokasi GPS</button><button class="secondary-btn" data-action="hilal-reminder">🔔 Aktifkan pengingat</button></div>
-              </div><div class="hilal-moon-art" aria-label="Ilustrasi Bulan sabit"><div class="hilal-orbit"></div><div class="hilal-globe"><div class="hilal-globe-shade"></div><span class="hilal-globe-highlight"></span></div><span class="hilal-orbit-dot"></span><span class="hilal-art-star star-a">✦</span><span class="hilal-art-star star-b">✧</span><span class="hilal-art-star star-c">·</span></div>
-            </div>
-            <div class="hilal-stats-grid">
-              <div class="card hilal-stat"><small>Lokasi pengamat</small><b id="hilalLocation">Kota Parepare</b><span id="hilalCoordinates">Lat -4.0189°, Lon 119.6238°</span></div>
-              <div class="card hilal-stat"><small>Umur Bulan (perkiraan)</small><b id="hilalAge">-- jam</b><span id="hilalPhase">Menghitung fase</span></div>
-              <div class="card hilal-stat"><small>Perkiraan ijtimak berikutnya</small><b id="hilalConjunction">--</b><span>Estimasi siklus sinodis</span></div>
-              <div class="card hilal-stat"><small>Prediksi awal</small><b id="hilalPrediction">Menyiapkan data</b><span id="hilalPredictionNote">Bukan konfirmasi rukyat</span></div>
-            </div>
-            <div class="hilal-columns">
-              <div class="card hilal-panel"><div class="hilal-panel-heading"><div><span class="eyebrow">LANGIT INTERAKTIF</span><h3>Peta bintang & arah hilal</h3></div><span class="hilal-live-dot">● Lokal</span></div>
-                <canvas id="hilalSkyCanvas" class="hilal-sky-canvas" aria-label="Peta bintang ilustratif"></canvas>
-                <div class="hilal-sky-legend"><span>✦ Bintang animasi</span><span>☾ Penanda Bulan perkiraan</span><span>☼ Siang/malam mengikuti posisi Matahari</span></div>
-                <div class="hilal-values"><div><small>Azimut Bulan*</small><b id="hilalAzimuth">--°</b></div><div><small>Ketinggian Bulan*</small><b id="hilalAltitude">--°</b></div><div><small>Elongasi*</small><b id="hilalElongation">--°</b></div></div>
-                <p class="hint">*Nilai posisi Bulan pada modul awal ini adalah perkiraan edukatif berpresisi rendah, bukan ephemeris resmi. Peta bintang adalah visualisasi, bukan citra langit langsung.</p>
-              </div>
-              <div class="card hilal-panel"><div class="hilal-panel-heading"><div><span class="eyebrow">PANDUAN PENGAMATAN</span><h3>Kamera & penunjuk arah</h3></div></div>
-                <div class="hilal-camera-wrap" id="hilalCameraWrap"><video id="hilalCamera" autoplay playsinline muted></video><div class="hilal-camera-placeholder" id="hilalCameraPlaceholder"><span>☾</span><b>Bidikan langit barat</b><small>Aktifkan kamera belakang dan arahkan perangkat ke ufuk.</small></div><div class="hilal-camera-overlay"><button class="hilal-camera-back" id="hilalCameraBack" type="button" aria-label="Kembali ke halaman Hilal">‹ <span>Kembali</span></button><div class="hilal-camera-guidance" id="hilalCameraGuidance">AKTIFKAN SENSOR ARAH UNTUK PENUNJUK KOMPAS</div><div class="hilal-reticle"></div><div class="hilal-direction-arrow" id="hilalDirectionArrow">↑</div><div class="hilal-camera-label" id="hilalCameraLabel">Azimut Bulan: --°</div><div class="hilal-camera-bottom-note">Penunjuk arah perkiraan • bukan deteksi Bulan otomatis</div></div></div>
-                <div class="button-row hilal-camera-actions"><button class="primary-btn" data-action="hilal-camera-start">Buka kamera layar penuh</button><button class="secondary-btn" data-action="hilal-camera-stop">Matikan kamera</button><button class="secondary-btn" data-action="hilal-sensor">Aktifkan sensor arah</button></div>
-                <p class="hint" id="hilalCameraStatus">Kamera membutuhkan izin dan biasanya HTTPS atau localhost. Panah membantu orientasi kompas, bukan AR presisi; arahkan ke ufuk barat.</p>
-              </div>
-            </div>
-            <div class="card hilal-panel hilal-analysis"><div class="hilal-panel-heading"><div><span class="eyebrow">ANALISIS VISIBILITAS</span><h3>Pemeriksaan kriteria MABIMS</h3></div><span class="hilal-badge">Hisab awal</span></div>
-              <div class="hilal-check-grid"><div><span>Tinggi hilal ≥ 3°</span><b id="hilalHeightCheck">Belum dihitung</b></div><div><span>Elongasi ≥ 6,4°</span><b id="hilalElongationCheck">Belum dihitung</b></div></div>
-              <p id="hilalAnalysisText" class="hilal-analysis-text">Analisis akan diperbarui berdasarkan perkiraan posisi Bulan. Kedua ambang perlu terpenuhi untuk memenuhi kriteria MABIMS, tetapi tidak menjamin hilal terlihat.</p>
-              <div class="hilal-reminder-box"><div><b>🔔 Pengingat hilal</b><span id="hilalReminderText">Pengingat belum diaktifkan.</span></div><button class="secondary-btn" data-action="hilal-reminder">Atur pengingat</button></div>
-              <p class="hint">Pengingat dibuat di perangkat ini. Browser dapat membatasi notifikasi saat aplikasi ditutup; untuk pengingat yang andal di Android, kelak perlu integrasi notifikasi native APK.</p>
-            </div>
-          </section>
-
           <!-- Qibla -->
           <section class="page" id="page-qibla">
             <div class="page-heading"><div><span class="eyebrow">KOMPAS</span><h2>Arah Kiblat</h2><p>Gunakan sensor orientasi perangkat untuk navigasi langsung.</p></div><div class="status-dot" id="sensorStatus">Sensor belum aktif</div></div>
-            <div class="location-card card compact"><div class="location-icon">⌖</div><div><small>Lokasi Anda</small><strong id="qiblaLocation">Kota Parepare, Sulawesi Selatan</strong><span id="qiblaCoords">Lat -4.0189° • Lon 119.6238°</span></div><button class="text-btn" data-action="get-location">GPS</button></div>
+            <div class="location-card card compact"><div class="location-icon">⌖</div><div><small>Lokasi Anda</small><strong id="qiblaLocation">Kota Parepare, Sulawesi Selatan</strong><span id="qiblaCoords">Lat -4.0189° • Lon 119.6238°</span></div><div class="button-row"><button class="text-btn" data-action="get-location">GPS</button><button class="text-btn" data-action="open-location-settings">Ganti Lokasi</button></div></div>
             <div class="qibla-layout">
               <div class="compass-card card">
                 <div class="bearing-top"><small>Arah Kiblat</small><strong id="qiblaBearing">296.7°</strong><span id="qiblaDirection">Barat Laut</span></div>
@@ -200,15 +161,38 @@
 
           <!-- Teodolit Falak: added module; existing pages remain intact -->
           <section class="page" id="page-theodolite">
-            <div class="page-heading"><div><span class="eyebrow">PENGUKURAN FALAK</span><h2>Teodolit Falak</h2><p>Kamera HP, koordinat pengamat, azimut kiblat, sudut vertikal, jarak, dan hasil hitung.</p></div><div class="status-dot" id="theodoliteStatus">Siap digunakan</div></div>
-            <div class="card theodolite-camera-card">
-              <div class="theodolite-camera-head"><div><b>Bidikan kamera HP</b><small id="cameraStatus">Kamera belum diaktifkan</small></div><div class="button-row"><button class="primary-btn" data-action="camera-start">Aktifkan Kamera</button><button class="secondary-btn" data-action="camera-stop">Matikan</button></div></div>
-              <div class="theodolite-camera-frame"><video id="theodoliteVideo" autoplay playsinline muted></video><div class="camera-placeholder" id="cameraPlaceholder"><span>◎</span><b>Pratinjau kamera</b><small>Aktifkan kamera belakang untuk membantu membidik objek.</small></div><div class="camera-reticle" aria-hidden="true"><i></i><b></b><i></i></div></div>
-              <p class="hint">Kamera hanya menampilkan pratinjau. Kamera HP tidak otomatis mengukur sudut seperti teodolit fisik. Untuk hasil falak, gunakan sensor yang tersedia atau masukkan bacaan instrumen secara manual.</p>
+            <div class="page-heading"><div><span class="eyebrow">PENGUKURAN FALAK</span><h2>Teodolit Falak</h2><p>Simulasi Matahari, penentuan utara sejati, azimut kiblat DMS, sudut vertikal, jarak, dan hasil hitung.</p></div><div class="status-dot" id="theodoliteStatus">Siap digunakan</div></div>
+            <div class="card theodolite-form-card" id="theodoliteSunSimulation">
+              <h3>Simulasi Matahari & Sudut Astronomis</h3>
+              <p class="hint">Simulasi dihitung dari waktu, zona waktu, dan koordinat lokasi yang dipilih. Azimut diukur dari utara searah jarum jam; tinggi Matahari diukur dari horizon. Simulasi bukan pembacaan kamera atau pengganti instrumen terkalibrasi.</p>
+              <div class="theodolite-input-grid">
+                <label>Tanggal dan waktu lokal<input id="solarSimulationDate" type="datetime-local"></label>
+                <label>Zona waktu<select id="solarSimulationTimezone"><option value="7">WIB (UTC+7)</option><option value="8" selected>WITA (UTC+8)</option><option value="9">WIT (UTC+9)</option><option value="0">UTC</option></select></label>
+              </div>
+              <div class="theodolite-result-grid">
+                <div class="coordinate-value"><small>Azimut Matahari</small><b id="simSunAz">--</b></div>
+                <div class="coordinate-value"><small>Ketinggian Matahari</small><b id="simSunAlt">--</b></div>
+                <div class="coordinate-value"><small>Deklinasi Matahari</small><b id="simSunDecl">--</b></div>
+                <div class="coordinate-value"><small>Status Matahari</small><b id="simSunState">--</b></div>
+              </div>
+              <p id="simSunNote" class="coordinate-status" aria-live="polite">Pilih waktu lalu simulasikan posisi Matahari.</p>
+              <div class="button-row"><button class="primary-btn" data-action="simulate-sun">Simulasikan Matahari</button><button class="secondary-btn" data-action="use-current-sun-time">Gunakan Waktu Sekarang</button></div>
+            </div>
+            <div class="card theodolite-form-card" id="trueNorthCard">
+              <h3>Menentukan Utara Sejati dari Matahari</h3>
+              <p class="hint">Masukkan A sebagai azimut arah Matahari hasil pengamatan (0°–360°), pilih waktu pengukuran dan tanda deklinasi Matahari. Rumus mengikuti tabel referensi yang Anda kirim; hasil dinormalisasi ke 0°–360°.</p>
+              <div class="theodolite-input-grid">
+                <label>Azimut Matahari hasil pengamatan, A (°)<input id="trueNorthSunAz" type="number" min="0" max="360" step="0.001" placeholder="Contoh: 75.250"></label>
+                <label>Waktu pengukuran<select id="trueNorthTime"><option value="morning">Pagi</option><option value="afternoon">Sore</option></select></label>
+                <label>Deklinasi Matahari<select id="trueNorthDeclination"><option value="north">Utara (positif)</option><option value="south">Selatan (negatif)</option></select></label>
+              </div>
+              <div class="theodolite-result-grid"><div class="coordinate-value"><small>Rumus yang digunakan</small><b id="trueNorthFormula">360° − A</b></div><div class="coordinate-value"><small>Utara sejati</small><b id="trueNorthResult">--</b></div></div>
+              <p id="trueNorthNote" class="coordinate-status" aria-live="polite">Masukkan azimut Matahari, lalu tekan Hitung Utara Sejati.</p>
+              <button class="primary-btn" data-action="true-north-calc">Hitung Utara Sejati</button>
             </div>
             <div class="theodolite-action-row button-row"><button class="secondary-btn" data-action="theodolite-gps">Ambil Posisi GPS</button><button class="secondary-btn" data-action="theodolite-sensor">Aktifkan Sensor Arah</button><button class="secondary-btn" data-action="theodolite-calc">Hitung Semua</button></div>
             <div class="theodolite-metric-grid">
-              <div class="metric card"><small>Azimut Kiblat</small><b id="tdQibla">--°</b><span id="tdQiblaDir">--</span></div>
+              <div class="metric card"><small>Azimut Kiblat (derajat–menit–detik)</small><b id="tdQibla">--</b><span id="tdQiblaDecimal">--° desimal</span><span id="tdQiblaDir">--</span></div>
               <div class="metric card"><small>Arah sensor HP</small><b id="tdHeading">--°</b><span id="tdHeadingNote">Belum terbaca</span></div>
               <div class="metric card"><small>Azimut Matahari</small><b id="tdSunAzimuth">--°</b><span id="tdSunAltitude">Ketinggian --°</span></div>
               <div class="metric card"><small>Akurasi GPS</small><b id="tdGpsAccuracy">-- m</b><span id="tdCoordinates">Koordinat belum dibaca</span></div>
@@ -227,29 +211,13 @@
               <div class="button-row"><button class="primary-btn" data-action="theodolite-calc">Hitung Pengukuran</button><button class="secondary-btn" data-action="theodolite-use-heading">Gunakan Arah Sensor</button><button class="secondary-btn" data-action="theodolite-use-qibla">Isi Azimut Kiblat</button></div>
             </div>
             <div class="card theodolite-results-card"><h3>Hasil perhitungan teodolit</h3><div class="theodolite-result-grid">
-              <div class="coordinate-value"><small>Selisih azimut terhadap kiblat</small><b id="tdAzimuthError">--°</b></div>
+              <div class="coordinate-value"><small>Selisih azimut terhadap kiblat</small><b id="tdAzimuthError">--</b></div>
               <div class="coordinate-value"><small>Jarak horizontal</small><b id="tdHorizontalDistance">-- m</b></div>
               <div class="coordinate-value"><small>Komponen beda tinggi (jarak miring)</small><b id="tdVerticalComponent">-- m</b></div>
               <div class="coordinate-value"><small>Beda tinggi setelah koreksi alat/target</small><b id="tdHeightDifference">-- m</b></div>
               <div class="coordinate-value"><small>Elevasi perkiraan target</small><b id="tdTargetElevation">-- mdpl</b></div>
               <div class="coordinate-value"><small>Sudut Matahari terhadap kiblat</small><b id="tdSunQiblaDifference">--°</b></div>
             </div><div id="tdCalculationSteps" class="calculation-steps"><p class="hint">Masukkan data lalu tekan Hitung Pengukuran untuk melihat substitusi rumus dan hasil akhir.</p></div></div>
-            <div class="card theodolite-form-card" id="solarSimulationCard">
-              <h3>Simulasi Posisi Matahari</h3>
-              <p class="hint">Prediksi posisi geometris Matahari berdasarkan waktu perangkat, koordinat lokasi, dan zona waktu yang dipilih. Ini simulasi hisab, bukan pembacaan kamera.</p>
-              <div class="theodolite-input-grid">
-                <label>Tanggal dan waktu lokal<input id="solarSimulationDate" type="datetime-local"></label>
-                <label>Zona waktu<select id="solarSimulationTimezone"><option value="7">WIB (UTC+7)</option><option value="8" selected>WITA (UTC+8)</option><option value="9">WIT (UTC+9)</option><option value="0">UTC</option></select></label>
-              </div>
-              <div class="theodolite-result-grid">
-                <div class="coordinate-value"><small>Azimut Matahari</small><b id="simSunAz">--°</b></div>
-                <div class="coordinate-value"><small>Tinggi Matahari</small><b id="simSunAlt">--°</b></div>
-                <div class="coordinate-value"><small>Deklinasi</small><b id="simSunDecl">--°</b></div>
-                <div class="coordinate-value"><small>Status geometris</small><b id="simSunState">--</b></div>
-              </div>
-              <p id="simSunNote" class="coordinate-status" aria-live="polite">Pilih waktu lalu tekan Simulasikan.</p>
-              <div class="button-row"><button class="primary-btn" data-action="simulate-sun">Simulasikan Posisi Matahari</button><button class="secondary-btn" data-action="use-current-sun-time">Gunakan Waktu Sekarang</button></div>
-            </div>
             <div class="card theodolite-form-card" id="observationLogCard">
               <h3>Catatan dan Validasi Observasi</h3>
               <p class="hint">Simpan hasil pengukuran saat ini sebagai catatan lokal di perangkat. Catatan ini bukan bukti akurasi otomatis; bandingkan dengan bacaan teodolit terkalibrasi.</p>
@@ -303,9 +271,25 @@
           <!-- Sun -->
           <section class="page" id="page-sun">
             <div class="page-heading"><div><span class="eyebrow">ASTRONOMI</span><h2>Posisi Matahari</h2><p>Azimut, ketinggian, dan waktu penting matahari.</p></div></div>
-            <div class="sun-location card"><span>⌖</span><div><b id="sunLocation">Kota Parepare, Sulawesi Selatan</b><small id="sunDate">--</small></div></div>
+            <div class="sun-location card"><span>⌖</span><div><b id="sunLocation">Kota Parepare, Sulawesi Selatan</b><small id="sunDate">--</small></div><button class="secondary-btn" data-action="open-location-settings">Ganti Lokasi</button><button class="text-btn" data-action="get-location">Gunakan GPS</button></div>
             <div class="sun-visual card"><div class="sun-arc scene-day" id="sunScene"><div class="scene-stars" aria-hidden="true"></div><div class="scene-cloud scene-cloud-a" aria-hidden="true"></div><div class="scene-cloud scene-cloud-b" aria-hidden="true"></div><div class="sun-dot" id="sunDot" aria-label="Posisi Matahari">☀</div><div class="horizon"></div><div class="sun-building" aria-hidden="true">⌂</div><div class="sun-scene-caption"><b id="sunSceneLabel">Langit siang</b><span id="sunSceneDetail">Simulasi berdasarkan waktu dan lokasi</span></div></div></div>
             <div class="metric-grid"><div class="metric card"><small>Azimut Matahari</small><b id="sunAzimuth">--°</b><span id="sunDirection">--</span></div><div class="metric card"><small>Ketinggian Matahari</small><b id="sunAltitude">--°</b></div><div class="metric card"><small>Waktu Zawal</small><b id="sunZawal">--:--</b></div><div class="metric card"><small>Waktu Istiwā'</small><b id="sunTransit">--:--</b></div></div>
+            <div class="card theodolite-form-card" id="solarSimulationCard">
+              <h3>Simulasi Posisi Matahari</h3>
+              <p class="hint">Prediksi posisi geometris Matahari berdasarkan waktu perangkat, koordinat lokasi, dan zona waktu yang dipilih. Ini simulasi hisab, bukan pembacaan kamera.</p>
+              <div class="theodolite-input-grid">
+                <label>Tanggal dan waktu lokal<input id="solarSimulationDate" type="datetime-local"></label>
+                <label>Zona waktu<select id="solarSimulationTimezone"><option value="7">WIB (UTC+7)</option><option value="8" selected>WITA (UTC+8)</option><option value="9">WIT (UTC+9)</option><option value="0">UTC</option></select></label>
+              </div>
+              <div class="theodolite-result-grid">
+                <div class="coordinate-value"><small>Azimut Matahari</small><b id="simSunAz">--°</b></div>
+                <div class="coordinate-value"><small>Tinggi Matahari</small><b id="simSunAlt">--°</b></div>
+                <div class="coordinate-value"><small>Deklinasi</small><b id="simSunDecl">--°</b></div>
+                <div class="coordinate-value"><small>Status geometris</small><b id="simSunState">--</b></div>
+              </div>
+              <p id="simSunNote" class="coordinate-status" aria-live="polite">Pilih waktu lalu tekan Simulasikan.</p>
+              <div class="button-row"><button class="primary-btn" data-action="simulate-sun">Simulasikan Posisi Matahari</button><button class="secondary-btn" data-action="use-current-sun-time">Gunakan Waktu Sekarang</button></div>
+            </div>
           </section>
 
           <!-- Rashdul -->
@@ -361,7 +345,7 @@
   </div>
 
   <script src="config.js"></script>
-  <script src="script.js"></script>  <script src="hilal.js"></script>
+  <script src="script.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </body>
 </html>
